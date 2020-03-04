@@ -280,6 +280,15 @@ def model_arena(size, trial_type, registration = False, obstacle_type = 'wall', 
             # add wall - down
             cv2.rectangle(model_arena, (int(500 - 6 / 2), int(500 - 500 / 2)), (int(500 + 6 / 2), int(500 + 500 / 2)), 90, thickness=-1)
 
+    elif obstacle_type == 'center void':
+        # arena outline
+        cv2.circle(model_arena, (500, 500), 460, 245, -1)
+        if not dark: cv2.circle(model_arena, (500, 500), 460, 0, 1, lineType=16)
+        if trial_type:
+            # void
+            cv2.rectangle(model_arena, (int(500 - 100 / 2), int(500 - 500 / 2)), (int(500 + 100 / 2), int(500 + 500 / 2)), 90, thickness=-1)
+
+
     elif 'other' in obstacle_type:
         # arena outline
         cv2.rectangle(model_arena, (200, 200), (800, 800), 245, -1)
@@ -313,9 +322,9 @@ def model_arena(size, trial_type, registration = False, obstacle_type = 'wall', 
 
         # add wall
         if not trial_type:
-            cv2.rectangle(model_arena, (int(100), int(500 - 6 / 2)), (int(100 + 480 + 180 - 20), int(500 + 6 / 2)), 90, thickness=-1)
-        else:
             cv2.rectangle(model_arena, (int(100), int(500 - 6 / 2)), (int(100 + 480 - 20), int(500 + 6 / 2)), 90, thickness=-1)
+        else:
+            cv2.rectangle(model_arena, (int(100), int(500 - 6 / 2)), (int(100 + 480 + 180 - 20), int(500 + 6 / 2)), 90, thickness=-1)
 
     elif obstacle_type == 'side wall':
         # arena outline

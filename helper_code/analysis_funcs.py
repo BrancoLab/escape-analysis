@@ -19,9 +19,9 @@ def initialize_arena(self, sub_experiments, sub_conditions):
     '''     initialize arena        '''
     shape = self.analysis[sub_experiments[0]]['obstacle']['shape']
     obstacle_type = self.analysis[sub_experiments[0]]['obstacle']['type']
-    no_obstacle = (('left' in sub_experiments[0] and sub_conditions[0]=='obstacle') \
-                    or ('right' in sub_experiments[0] and sub_conditions[0]=='no obstacle')) or (not 'lights' in sub_experiments[0])
-    arena, _, _ = model_arena(shape,not no_obstacle, False, obstacle_type, simulate=False, dark=self.dark_theme)
+    obstacle = sub_conditions[0]=='obstacle' or ('left' in sub_experiments[0] and sub_conditions[0]=='no obstacle') or 'lights' in sub_experiments[0]
+    print(obstacle)
+    arena, _, _ = model_arena(shape, obstacle, False, obstacle_type, simulate=False, dark=self.dark_theme)
     scaling_factor = 100 / arena.shape[0]
     arena_color = cv2.cvtColor(arena, cv2.COLOR_GRAY2RGB)
     return arena, arena_color, scaling_factor
@@ -63,6 +63,8 @@ def initialize_variable_edginess(number_of_trials, self, sub_experiments):
     time_in_center = np.ones(number_of_trials) * np.nan
     end_idx = np.ones(number_of_trials) * np.nan
     time_since_down = np.ones(number_of_trials) * np.nan
+    dist_to_SH = np.ones(number_of_trials) * np.nan
+    dist_to_other_SH = np.ones(number_of_trials) * np.nan
     previous_movement_and_ICs = [[],[],[],[]]
     data_y_for_prev_movement = [[],[]]
     trial_num = -1
@@ -72,7 +74,7 @@ def initialize_variable_edginess(number_of_trials, self, sub_experiments):
     time_to_shelter_all = []
     SR_all = []
     return edginess, end_idx, time_since_down, time_to_shelter,time_to_shelter_all, prev_edginess, \
-           scaling_factor, time_in_center, trial_num, previous_movement_and_ICs, data_y_for_prev_movement
+           scaling_factor, time_in_center, trial_num, previous_movement_and_ICs, data_y_for_prev_movement, dist_to_SH, dist_to_other_SH
 
 
 def initialize_variables_efficiency(number_of_trials, self, sub_experiments):
@@ -356,13 +358,25 @@ def do_linear_regression(plot_data, plot_data_x):
 
 '''     ANALYSIS-TYPE-SPECIFIC FUNCTIONS        '''
 
-def get_prev_edginess(ETD, condition, experiment, mouse, prev_edginess, scaling_factor, self, traj_loc, trial, trial_num):
+def get_prev_edginess(ETD, condition, experiment, mouse, prev_edginess, dist_to_SH, dist_to_other_SH, scaling_factor, self, traj_loc, trial, trial_num, edginess, delta_ICs, delta_x_end):
     SH_data = self.analysis[experiment][condition]['prev homings'][mouse][trial]
-    SR = np.array(SH_data[0])
+    SH_start_data = self.analysis[experiment][condition]['prev movements'][mouse][trial]
+    SH_x_movements = np.array(SH_start_data[4])
+    SH_angle_start = np.array(SH_start_data[2])
+    # escape_start_angle = self.analysis[experiment][condition]['movement'][mouse][trial][1]
+
+    SH_x = np.array(SH_data[0])
     x_edge = self.analysis[experiment][condition]['x edge'][mouse][trial]
     SR_time = np.array(SH_data[3])
     time_to_shelter = np.array(SH_data[2])
     RT = self.analysis[experiment][condition]['RT'][mouse][trial]
+
+    # get previous homing initial conditions
+    SH_start_x =  np.array(SH_start_data[0])[abs(SH_x_movements - x_edge) < 10]
+    SH_start_y = np.array(SH_start_data[1])[abs(SH_x_movements - x_edge) < 10]
+    SH_all_start_x =  np.array(SH_start_data[0])
+    SH_all_start_y = np.array(SH_start_data[1])
+
     # RT = 0
     # get position for the trial
     x_pos = self.analysis[experiment][condition]['path'][mouse][trial][0][int(RT * 30):] * scaling_factor
@@ -373,19 +387,22 @@ def get_prev_edginess(ETD, condition, experiment, mouse, prev_edginess, scaling_
     y_edge = 50
     # only use spontaneous
     # stim_evoked = np.array(SH_data[5])
-    # SR = SR[~stim_evoked]
-    # SR = SR[time_to_shelter < 10]
+    # SH_x = SH_x[~stim_evoked]
+    # SH_x = SH_x[time_to_shelter < 10]
+
     # only use recent escapes
-    if len(SR) >= (ETD + 1): SR = SR[-ETD:]
+    if len(SH_x) >= (ETD + 1): SH_x = SH_x[-ETD:]
+
+
     # get line to the closest edge, exclude escapes to other edge
     MOE = 10.2  # 20 #10.2
     if x_edge > 50:
-        SR = SR[SR > 25 + MOE]  # 35
+        SH_x = SH_x[SH_x > 25 + MOE]  # 35
     else:
-        SR = SR[SR < 75 - MOE]  # 65
+        SH_x = SH_x[SH_x < 75 - MOE]  # 65
     # take the mean of the prev homings
-    if SR.size:
-        x_repetition = np.mean(SR)
+    if SH_x.size:
+        x_repetition = np.mean(SH_x)
         # NOW DO THE EDGINESS ANALYSIS, WITH REPETITION AS THE REAL DATA
         # do line from starting position to shelter
         y_pos_end = 86.5
@@ -394,7 +411,7 @@ def get_prev_edginess(ETD, condition, experiment, mouse, prev_edginess, scaling_
         y_pos_start = y_pos[0]
         slope = (y_pos_end - y_pos_start) / (x_pos_end - x_pos_start)
         intercept = y_pos_start - x_pos_start * slope
-        if SR.size: distance_to_line = abs(traj_loc - slope * x_repetition - intercept) / np.sqrt((-slope) ** 2 + (1) ** 2)
+        if SH_x.size: distance_to_line = abs(traj_loc - slope * x_repetition - intercept) / np.sqrt((-slope) ** 2 + (1) ** 2)
         homing_vector_at_center = (traj_loc - intercept) / slope
         # do line from starting position to edge position
         slope = (y_edge - y_pos_start) / (x_edge - x_pos_start)
@@ -407,14 +424,34 @@ def get_prev_edginess(ETD, condition, experiment, mouse, prev_edginess, scaling_
         prev_edginess[trial_num] = (distance_to_line - distance_to_edge + line_to_edge_offset) / (2 * line_to_edge_offset)
         # print(prev_edginess[trial_num])
         # num_edge_vectors, x_edge = get_num_edge_vectors(self, experiment, condition, mouse, trial, ETD = ETD)
-        # prev_edginess[trial_num] = num_edge_vectors #- (SR.size - num_edge_vectors)
-        # print('ev')
-        # print(num_edge_vectors)
-        # print(SR.size)
+        # prev_edginess[trial_num] = (num_edge_vectors
+
+        if SH_start_x.size:
+            dist_to_SH[trial_num] = np.min(np.linalg.norm( [x_pos_start - SH_start_x, y_pos_start - SH_start_y], axis = 0))
+
+            random_idx = np.random.choice(SH_all_start_x.size, SH_start_x.size)
+            dist_to_other_SH[trial_num] = np.min(np.linalg.norm([x_pos_start - SH_all_start_x[random_idx], y_pos_start - SH_all_start_y[random_idx]], axis=0))
+
+        else:
+            dist_to_SH[trial_num] = np.nan
+
+        # difference in initial conditions
+        # delta_angle = abs(escape_start_angle - SH_angle_start)
+        # delta_angle[delta_angle > 180] = 360 - delta_angle[delta_angle > 180]
+
+        delta_ICs.append( list( np.linalg.norm( [x_pos_start - SH_all_start_x, y_pos_start - SH_all_start_y], axis = 0) )) #, delta_angle
+
+        # difference in final x position
+        center_y_idx = np.argmin(abs(y_pos - 45))
+        x_at_center_y = x_pos[center_y_idx]
+        delta_x_end.append( list(abs(SH_x_movements - x_at_center_y) ))
+
 
     else: prev_edginess[trial_num] = 0
 
-    return time_to_shelter, SR
+
+
+    return time_to_shelter, SH_x
 
 def get_num_edge_vectors(self, experiment, condition, mouse, trial, ETD = False):
     SH_data = self.analysis[experiment][condition]['prev homings'][mouse][trial]
@@ -425,7 +462,7 @@ def get_num_edge_vectors(self, experiment, condition, mouse, trial, ETD = False)
     x_edge = self.analysis[experiment][condition]['x edge'][mouse][trial]
 
     homings_dist_from_edge = abs(SR - x_edge)
-    num_edge_vectors = np.sum(homings_dist_from_edge < 5) #4
+    num_edge_vectors = np.sum(homings_dist_from_edge < 10) #4
 
     return num_edge_vectors, x_edge
 
@@ -437,8 +474,15 @@ def initialize_figures(self, traversals = 1):
         ax.set_xlim([-1, traversals * 3 * len(self.experiments) - 1])
         ax.set_ylim([-.7, 1.7]) #1.15
     else:
-        fig, ax = plt.subplots(figsize=(9, 6))
-        # fig, ax = plt.subplots(figsize=(6*traversals+3, 6+3))
+        if 'food' in self.experiments[0] or 'food' in self.experiments[0][0]:
+            fig, ax = plt.subplots(figsize=(9, 9))
+        elif 'down' in self.experiments[0]:
+            fig, ax = plt.subplots(figsize=(6, 6))
+        else:
+            fig, ax = plt.subplots(figsize=(9, 6))
+
+        # fig, ax = plt.subplots(figsize=(6 * traversals + 3, 6 + 3))
+
         ax.set_xlim([-1, traversals * 3 * len(self.experiments) - 1])
         ax.set_ylim([-.1, 1.15])
     # plot dotted lines
@@ -495,14 +539,14 @@ def initialize_figures_traversals(self, types = 1):
 def initialize_figures_prediction(self):
     fig1, ax1 = plt.subplots(figsize=(12, 6))
     ax1.set_xlim([-.85, 1.05])
-    ax1.set_ylim([-.05, 8.05])
+    ax1.set_ylim([-.05, 10.05])
     ax1.spines['right'].set_visible(False)
     ax1.spines['top'].set_visible(False)
     ax1.plot([0,0],[-1,10], color = [.5,.5,.5], linestyle = '--')
 
     fig2, ax2 = plt.subplots(figsize=(12, 6))
     ax2.set_xlim([-.85, 1.05])
-    ax2.set_ylim([-.05, 8.05])
+    ax2.set_ylim([-.05, 10.05])
     ax2.spines['right'].set_visible(False)
     ax2.spines['top'].set_visible(False)
     ax2.plot([0,0],[-1,10], color = [.5,.5,.5], linestyle = '--')
@@ -615,7 +659,7 @@ def show_escape_paths(HV_cutoff, arena, arena_color, arena_reference, c, conditi
             # select the number of trials
             # if trial > 2 and not 'Square' in experiment: continue
             # if trial != 1 and trial !=2: continue
-            if t > 2: continue
+            if t > 12: continue
             # if t: continue
             # if not trial: continue
 
@@ -636,16 +680,16 @@ def show_escape_paths(HV_cutoff, arena, arena_color, arena_reference, c, conditi
         #
         if 'side' in experiment:
             if (x_idx[0] * scaling_factor) > 50: x_idx = (100 / scaling_factor - x_idx).astype(int)
-            if abs(x_idx[0] * scaling_factor - 50) < 25: continue
-            if abs(y_idx[0] * scaling_factor - 50) > 25: continue
+            # if abs(x_idx[0] * scaling_factor - 50) < 25: continue
+            # if abs(y_idx[0] * scaling_factor - 50) > 25: continue
         elif 'Square' in experiment:
             if x_idx[0] * scaling_factor > 75: continue
             # not the one HV, for the edge-vector-only plot
             # if y_idx[0] * scaling_factor < 9: continue #11
         else:
             # needs to start at top
-            if y_idx[0] * scaling_factor > 25: continue #23.5
-            if abs(x_idx[0] * scaling_factor - 50) > 25: continue #20
+            if y_idx[0] * scaling_factor > 25: continue
+            if abs(x_idx[0] * scaling_factor - 50) > 25: continue
             # if abs(self.analysis[experiment][condition]['start angle'][mouse][trial]) < 45:
             #     print(abs(self.analysis[experiment][condition]['start angle'][mouse][trial])); continue
         # t+=1

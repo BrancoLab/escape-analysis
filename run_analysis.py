@@ -35,8 +35,6 @@ class analysis():
         '''     Load analysis that's been done      '''
         # find file path to analysis dictionary
         self.save_file = os.path.join(self.folders['save_folder'], 'analysis_data_' + analysis_type)
-        # get edginess variables for prediction
-        if analysis_type == 'prediction': analysis_type = 'edginess'
         # load and initialize dictionary
         self.analysis = {}
         for experiment in flatten(self.experiments):

@@ -13,10 +13,11 @@ class analyze_data():
     def __init__(self, analysis, dataframe, analysis_type):
         '''     initialize quantities for analyzing data         '''
         # list of quantities to analyze
-        if analysis_type == 'exploration': self.quantities_to_analyze =['exploration']
+        if analysis_type == 'exploration': self.quantities_to_analyze =['exploration', 'start time']
         if analysis_type == 'traversals': self.quantities_to_analyze =['back traversal', 'front traversal']
         if analysis_type == 'escape paths': self.quantities_to_analyze = ['speed', 'start time', 'end time', 'path', 'edginess', 'RT', 'x edge', 'start angle']
-        if analysis_type == 'prediction': analysis_type = 'edginess'
+        if analysis_type == 'prediction': self.quantities_to_analyze = ['start time', 'end time', 'path', 'edginess','RT', 'prev homings', 'prev movements',
+                                                                      'in center', 'movement', 'x edge', 'start angle', 'x escape']
         if analysis_type == 'edginess': self.quantities_to_analyze = ['start time', 'end time', 'path', 'edginess','RT', 'prev homings', 'prev movements',
                                                                       'in center', 'movement', 'x edge', 'start angle']
         if analysis_type == 'efficiency': self.quantities_to_analyze = ['start time', 'end time','optimal path length', 'path', 'prev homings', 'prev movements',
@@ -105,11 +106,12 @@ class analyze_data():
                 if 'RT' in self.quantities_to_analyze: analysis.analysis[self.experiment][self.condition]['RT'][self.mouse].append(RT[0] / 30)
                 if 'optimal path length' in self.quantities_to_analyze: self.analyze_optimal_path_lengths(distance_map, position, stim - self.vid_duration[self.vid_num], arrived_at_shelter, speed, RT, analysis)
                 if 'edginess' in self.quantities_to_analyze: self.analyze_edginess(RT_speed, angular_speed, arrived_at_shelter, position, subgoal_speed_trace, stim_idx, threat_idx, analysis)
-                #if 'movement' in self.quantities_to_analyze: self.analyze_movements(coordinates, stim, position, distance_map, distance_from_shelter, analysis)
+                if 'movement' in self.quantities_to_analyze: self.analyze_movements(coordinates, stim, position, distance_map, distance_from_shelter, analysis)
             elif 'x edge' in self.quantities_to_analyze:
                 self.analyze_x_edge(position, stim_idx, analysis)
                 self.fill_in_nans(analysis)
             else: self.fill_in_nans(analysis)
+
 
     def analyze_traversals(self, coordinates, analysis):
         '''     analyze traversals across the arena         '''
@@ -279,7 +281,7 @@ class analyze_data():
 
     def fill_in_nans(self, analysis):
         '''     fill in non-escape data with nans       '''
-        escape_dependent_fields = ['end time', 'RT', 'edginess', 'optimal path length', 'optimal RT path length', 'full path length', 'RT path length', 'prev movements']
+        escape_dependent_fields = ['end time', 'RT', 'edginess', 'optimal path length', 'optimal RT path length', 'full path length', 'RT path length', 'x escape']
         for field in escape_dependent_fields:
             if field in self.quantities_to_analyze:
                 # if field == 'prev homings':
@@ -292,6 +294,7 @@ class analyze_data():
         # get the x values at center
         x_SH = [];
         y_SH = [];
+        x_SH_movements = [];
         thru_center = [];
         SH_time = []
         how_long_to_shelter = []
@@ -302,52 +305,84 @@ class analyze_data():
         turn_angle = []
         center_y = 45
 
+        combo_paths = 0
+
         if not 'U shaped' in self.experiment:
             in_shelter = np.where(coordinates['distance_from_shelter'][:stim] < 60)[0]
             start_idx = np.where(coordinates['start_index'][:stim])[0]
             end_idx = coordinates['start_index'][start_idx]
             for j, (s, e) in enumerate(zip(start_idx, end_idx)):
+                # get current path's data
                 homing_idx = np.arange(s, e).astype(int)
                 path = coordinates['center_location'][0][homing_idx] * self.scaling_factor, \
                        coordinates['center_location'][1][homing_idx] * self.scaling_factor
-                '''     EXCLUDE IF STARTS TOO LOW, OR NEVER GOES INSIDE X OF OBSTACLE, OR NEVER GETS CLOSE TO Y=45      '''
-                # if to low or too lateral don't use
-                try: #TEMPORARY
-                    if path[1][0] > 40 or (not np.sum(abs(path[1] - 45) < 5)) or not (np.sum((abs(path[0] - 50) < 24.5) * (path[1] < 50))): continue
-                except:
-                    print('issue with prev homings')
-                    break
-                if j:
-                    # if it doesn't start in the back, don't use (unless it's a continuation of one that does start in the back)
-                    if path[1][0] > 27 and (not s == end_idx[j - 1] + 1): continue
-                center_idx = np.argmin(abs(path[1] - 45))
-                x_SH.append(path[0][center_idx])
-                edge_idx = np.argmin(abs(path[1] - 50))
-                y_SH.append(path[1][edge_idx])
-                SH_time.append(s / 30 / 60)
-                # how long until shelter
-                in_shelter_next = in_shelter[in_shelter > e]
-                if in_shelter_next.size: how_long_to_shelter.append( (in_shelter_next[0] - e) / self.fps)
-                else: how_long_to_shelter.append(60)
-                # stimulus evoked?
-                stim_evoked.append(s in self.stim_idx[0])
 
-                # do the initial conditions
-                x_start.append(path[0][0])
-                y_start.append(path[1][0])
+                # if self.mouse == 'CA7010' and path[1][0] < 40:
+                #     print(path[1][0])
+                #     print(path[0][0])
+                #     print(path[1][-1])
+                #     print(path[0][-1])
+                #     print('hi')
 
-                start_angle = coordinates['body_angle'][s]
-                end_angle = coordinates['body_angle'][int(e)]
-                angle_start.append(start_angle)
+                # exclude if starts too far down or is already used
+                if path[1][0] > 35 or combo_paths: #was 40 TEMP
+                    if combo_paths>0: combo_paths -= 1
+                else:
+                   # if next path is continuation of this one, see if it qualifies
+                    continuations_to_test = 3
+                    for c in range(1, continuations_to_test+1):
+                        # if next path is a continuation of this one
+                        if (j+c) < len(start_idx) and start_idx[j + c] == end_idx[j+c-1] + 1:
+                            combo_paths += 1
+                        else:
+                            break
 
-                # do the turn angle
-                turn = abs(end_angle - start_angle)
-                turn_direction = np.median(np.diff(coordinates['body_angle'])[s:int(e)])  # positive is left, negative is right
-                if abs(turn_direction) > 180: turn_direction *= -1  # if pass the 360, shift sign
-                # correct for crossing zero
-                if turn > 180: turn = 360 - turn
-                # neagtive is left, positive is right
-                turn_angle.append( turn * np.sign(-turn_direction) )
+                    if combo_paths:
+                        # combine with next path's data
+                        homing_idx = np.arange(s, end_idx[j+combo_paths]).astype(int)
+                        path = coordinates['center_location'][0][homing_idx] * self.scaling_factor, \
+                               coordinates['center_location'][1][homing_idx] * self.scaling_factor
+
+                    #    test eligibility
+                    #    or never approaches y center      or never is above wall on top part of arena
+                    if np.sum(abs(path[1] - 45) < 5) and np.sum((abs(path[0] - 50) < 24.5) * (path[1] < 50)): #27.5?
+
+                        # get x-position along central wall
+                        center_y_idx = np.argmin(abs(path[1] - 45))
+                        x_SH.append(path[0][center_y_idx])
+
+                        # get y-position closest to center
+                        edge_idx = np.argmin(abs(path[1] - 50))
+                        y_SH.append(path[1][edge_idx])
+
+                        # get time of homing onset
+                        SH_time.append(s / 30 / 60)
+
+                        # get time until next in shelter
+                        in_shelter_next = in_shelter[in_shelter > e]
+                        if in_shelter_next.size: how_long_to_shelter.append( (in_shelter_next[0] - e) / self.fps)
+                        else: how_long_to_shelter.append(60)
+
+                        # get stimulus evoked?
+                        stim_evoked.append(s in self.stim_idx[0])
+
+                        # get the initial conditions
+                        x_start.append(path[0][0])
+                        y_start.append(path[1][0])
+
+                        # get the initial angle
+                        start_angle = coordinates['body_angle'][s]
+                        end_angle = coordinates['body_angle'][int(e)]
+                        angle_start.append(start_angle)
+
+                        # do the turn angle
+                        turn = abs(end_angle - start_angle)
+                        turn_direction = np.median(np.diff(coordinates['body_angle'])[s:int(e)])  # positive is left, negative is right
+                        if abs(turn_direction) > 180: turn_direction *= -1  # if pass the 360, shift sign
+                        # correct for crossing zero
+                        if turn > 180: turn = 360 - turn
+                        # neagtive is left, positive is right
+                        turn_angle.append(turn * np.sign(-turn_direction))
 
         else: # for U-shaped experiments define homings differently
             position = coordinates['center_location'][0][:stim] * self.scaling_factor, coordinates['center_location'][1][:stim] * self.scaling_factor
@@ -373,7 +408,175 @@ class analyze_data():
             print(x_SH)
 
         analysis.analysis[self.experiment][self.condition]['prev homings'][self.mouse].append([x_SH, y_SH, how_long_to_shelter, SH_time, stim_evoked])
-        analysis.analysis[self.experiment][self.condition]['prev movements'][self.mouse].append([x_start, y_start, angle_start, turn_angle])
+        analysis.analysis[self.experiment][self.condition]['prev movements'][self.mouse].append([x_start, y_start, angle_start, turn_angle, x_SH])
+
+    # blank = np.zeros((100, 100))
+    # blank = np.zeros((100, 100)).astype(np.uint8)
+    # cv2.circle(blank, (50, 50), 46, 255, 2)
+    # for x, y in zip(x_start, y_start):
+    #     cv2.circle(blank, (int(x), int(y)), 2, 255, -1)
+    # cv2.imshow('dots', blank)
+    # cv2.waitKey(100)
+
+    # if (j + 1) < len(start_idx) and start_idx[j + 1] == e + 1:
+    #     # combine with next path's data
+    #     homing_idx = np.arange(s, end_idx[j + 1]).astype(int)
+    #     path = coordinates['center_location'][0][homing_idx] * self.scaling_factor, \
+    #            coordinates['center_location'][1][homing_idx] * self.scaling_factor
+    #     #    or never approaches y center      or never is above wall on top part of arena
+    #     if (not np.sum(abs(path[1] - 45) < 5)) or not (np.sum((abs(path[0] - 50) < 24.5) * (path[1] < 50))):
+    #         combined_path_qualifies = False
+    #         # try combining one more
+    #         if (j + 2) < len(start_idx) and start_idx[j + 2] == end_idx[j + 1] + 1:
+    #             # combine with next path's data
+    #             homing_idx = np.arange(s, end_idx[j + 2]).astype(int)
+    #             path = coordinates['center_location'][0][homing_idx] * self.scaling_factor, \
+    #                    coordinates['center_location'][1][homing_idx] * self.scaling_factor
+    #             # does this path qualify
+    #             if (not np.sum(abs(path[1] - 45) < 5)) or not (np.sum((abs(path[0] - 50) < 24.5) * (path[1] < 50))):
+    #                 combined_path_qualifies = False
+    #             else:
+    #                 combined_path_qualifies = True
+    #                 skip_next = True
+    #     else:
+    #         combined_path_qualifies = True
+    #         skip_next = True
+    # else:
+    #     combined_path_qualifies = False
+    #
+    # def analyze_prev_homings(self, coordinates, stim, analysis):
+    #     '''     analyze previous homings!       '''
+    #     # get the x values at center
+    #     x_SH = [];
+    #     y_SH = [];
+    #     x_SH_movements = [];
+    #     thru_center = [];
+    #     SH_time = []
+    #     how_long_to_shelter = []
+    #     stim_evoked = []
+    #     x_start = []
+    #     y_start = []
+    #     angle_start = []
+    #     turn_angle = []
+    #     center_y = 45
+    #
+    #     if not 'U shaped' in self.experiment:
+    #         in_shelter = np.where(coordinates['distance_from_shelter'][:stim] < 60)[0]
+    #         start_idx = np.where(coordinates['start_index'][:stim])[0]
+    #         end_idx = coordinates['start_index'][start_idx]
+    #         for j, (s, e) in enumerate(zip(start_idx, end_idx)):
+    #             homing_idx = np.arange(s, e).astype(int)
+    #             path = coordinates['center_location'][0][homing_idx] * self.scaling_factor, \
+    #                    coordinates['center_location'][1][homing_idx] * self.scaling_factor
+    #
+    #
+    #             '''     EXCLUDE IF STARTS TOO LOW, OR NEVER GOES INSIDE X OF OBSTACLE, OR NEVER GETS CLOSE TO Y=45      '''
+    #             # if starts too far down or never approaches y center     or    never is by x edge on top part of arena
+    #             if path[1][0] > 40 or (not np.sum(abs(path[1] - 45) < 5)) or not (np.sum((abs(path[0] - 50) < 24.5) * (path[1] < 50))):
+    #                 if self.mouse == 'CA3410' and path[1][0] < 25 and path[0][0] > 53:
+    #                     print(path[1][0], path[0][0])
+    #                     print('hi')
+    #                 # make recursive!
+    #                 continue
+    #                 # if next path is continuation of this one, use this one if next one qualifies
+    #                 if (j+1) < len(start_idx) and start_idx[j + 1] == e + 1:
+    #                     homing_idx = np.arange(start_idx[j+1], end_idx[j+1]).astype(int)
+    #                     next_path = coordinates['center_location'][0][homing_idx] * self.scaling_factor, \
+    #                                 coordinates['center_location'][1][homing_idx] * self.scaling_factor
+    #                     if next_path[1][0] > 40 or (not np.sum(abs(next_path[1] - 45) < 5)) or not (np.sum((abs(next_path[0] - 50) < 24.5) * (next_path[1] < 50))):
+    #                         continue
+    #                     else:
+    #                         # do the initial conditions
+    #                         x_start.append(path[0][0])
+    #                         y_start.append(path[1][0])
+    #
+    #                         start_angle = coordinates['body_angle'][s]
+    #                         end_angle = coordinates['body_angle'][int(e)]
+    #                         angle_start.append(start_angle)
+    #
+    #                         # do the turn angle
+    #                         turn = abs(end_angle - start_angle)
+    #                         turn_direction = np.median(np.diff(coordinates['body_angle'])[s:int(e)])  # positive is left, negative is right
+    #                         if abs(turn_direction) > 180: turn_direction *= -1  # if pass the 360, shift sign
+    #                         # correct for crossing zero
+    #                         if turn > 180: turn = 360 - turn
+    #                         # neagtive is left, positive is right
+    #                         turn_angle.append(turn * np.sign(-turn_direction))
+    #
+    #                         center_idx = np.argmin(abs(next_path[1] - 45))
+    #                         x_SH_movements.append(next_path[0][center_idx])
+    #
+    #                         '''      GET FUTURE X_SH SO CAN HAVE BOTH START POINT AND END POINT!      '''
+    #
+    #                 continue
+    #
+    #             if j:
+    #                 # for prev edginess metric
+    #                 # if it doesn't start in the back, don't use (unless it's a continuation of one that does start in the back)
+    #                 if path[1][0] > 27 and (not s == end_idx[j - 1] + 1): continue
+    #
+    #             center_idx = np.argmin(abs(path[1] - 45))
+    #             x_SH.append(path[0][center_idx])
+    #
+    #             edge_idx = np.argmin(abs(path[1] - 50))
+    #             y_SH.append(path[1][edge_idx])
+    #             SH_time.append(s / 30 / 60)
+    #             # how long until shelter
+    #             in_shelter_next = in_shelter[in_shelter > e]
+    #             if in_shelter_next.size: how_long_to_shelter.append( (in_shelter_next[0] - e) / self.fps)
+    #             else: how_long_to_shelter.append(60)
+    #             # stimulus evoked?
+    #             stim_evoked.append(s in self.stim_idx[0])
+    #
+    #             # for prev movements:
+    #             # if j:
+    #             #     if path[1][0] > 27: continue
+    #             x_SH_movements.append(path[0][center_idx])
+    #
+    #             # do the initial conditions
+    #             x_start.append(path[0][0])
+    #             y_start.append(path[1][0])
+    #
+    #             start_angle = coordinates['body_angle'][s]
+    #             end_angle = coordinates['body_angle'][int(e)]
+    #             angle_start.append(start_angle)
+    #
+    #             # do the turn angle
+    #             turn = abs(end_angle - start_angle)
+    #             turn_direction = np.median(np.diff(coordinates['body_angle'])[s:int(e)])  # positive is left, negative is right
+    #             if abs(turn_direction) > 180: turn_direction *= -1  # if pass the 360, shift sign
+    #             # correct for crossing zero
+    #             if turn > 180: turn = 360 - turn
+    #             # neagtive is left, positive is right
+    #             turn_angle.append(turn * np.sign(-turn_direction))
+    #
+    #
+    #     else: # for U-shaped experiments define homings differently
+    #         position = coordinates['center_location'][0][:stim] * self.scaling_factor, coordinates['center_location'][1][:stim] * self.scaling_factor
+    #         duration_of_homing = 30 # in frames
+    #         # find instance where the mouse goes from top center past the U within 1 second
+    #         in_top_left_center = (position[1] < 30) * (position[0] < 60)
+    #         in_top_right_center = (position[1] < 30) * (position[0] > 40)
+    #         in_cup = (position[1] > 30) * (abs(position[0] - 50) < 25)
+    #         past_cup_left = (position[1] > 20) * (position[0] < 25) * (position[0] > 20)
+    #         past_cup_right = (position[1] > 20) * (position[0] > 75) * (position[0] < 80)
+    #
+    #         # filter in_cup so it includes all one second in future
+    #         was_in_cup = scipy.signal.convolve(in_cup, np.ones(duration_of_homing),mode='full', method = 'direct')[:-(duration_of_homing-1)].astype(bool)
+    #
+    #         # get homings
+    #         homing_left = past_cup_left[duration_of_homing:] * ~was_in_cup[duration_of_homing:] * in_top_right_center[:-duration_of_homing]
+    #         if np.sum(homing_left): x_SH.append(25)
+    #         else: x_SH.append(50)
+    #         homing_right = past_cup_right[duration_of_homing:] * ~was_in_cup[duration_of_homing:] * in_top_left_center[:-duration_of_homing]
+    #         if np.sum(homing_right): x_SH.append(75)
+    #         else: x_SH.append(50)
+    #
+    #         print(x_SH)
+    #
+    #     analysis.analysis[self.experiment][self.condition]['prev homings'][self.mouse].append([x_SH, y_SH, how_long_to_shelter, SH_time, stim_evoked])
+    #     analysis.analysis[self.experiment][self.condition]['prev movements'][self.mouse].append([x_start, y_start, angle_start, turn_angle, x_SH_movements])
+
 
     def analyze_movements(self, coordinates, stim, position, distance_map, distance_from_shelter, analysis):
         '''     get start pos, start orientation, turn angle    '''
@@ -411,7 +614,7 @@ class analyze_data():
                 break
 
         analysis.analysis[self.experiment][self.condition]['movement'][self.mouse].append([bout_start_position, bout_start_angle, turn_angle])
-        print([bout_start_position, bout_start_angle, turn_angle])
+        # print([bout_start_position, bout_start_angle, turn_angle])
 
 
     def analyze_edginess(self, RT_speed, angular_speed, arrived_at_shelter, position, subgoal_speed_trace, stim_idx, threat_idx, analysis):
@@ -507,6 +710,7 @@ class analyze_data():
         # print(edginess)
         analysis.analysis[self.experiment][self.condition]['edginess'][self.mouse].append(edginess)
         analysis.analysis[self.experiment][self.condition]['x edge'][self.mouse].append(x_edge)
+        if 'x escape' in self.quantities_to_analyze: analysis.analysis[self.experiment][self.condition]['x escape'][self.mouse].append(x_pos[mouse_at_eval_point])
 
     def analyze_x_edge(self, position, stim_idx, analysis):
 

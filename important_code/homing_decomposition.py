@@ -26,7 +26,7 @@ def decompose_homings(self):
     # set distance parameters
     minimum_distance = 50
     max_shelter_proximity = 50
-    critical_turn = 25
+    critical_turn = 45 #50? 75? TEMP -- WAS 25
     back_butt_dist = 18
 
     # do convolutions to get current, future, far future, and past speeds w.r.t the shelter

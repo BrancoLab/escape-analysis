@@ -61,7 +61,8 @@ def set_up_arena_visualizations(self):
         self.shelter_roi = shelter_roi
     # set up for exploration
     if self.processing_options['exploration']:
-        arena, _, _ = model_arena((self.height, self.width), self.trial_types[0], registration=False, obstacle_type=self.obstacle_type, dark=self.dark_theme, shift_wall = True)
+        arena, _, _ = model_arena((self.height, self.width), self.trial_types[0], registration=False, obstacle_type=self.obstacle_type, \
+                                  shelter=not 'no shelter' in experiment and not 'food' in experiment, dark=self.dark_theme) #, shift_wall = True) #temporary
         self.exploration_arena = cv2.cvtColor(arena.copy(), cv2.COLOR_GRAY2RGB)
 
 
@@ -115,7 +116,7 @@ def get_trial_types(self, stims_all):
         if not ('Trial Types' in self.session['Tracking']):
             self.session['Tracking']['Trial Types'] = [[] for x in range(number_of_vids)]
         # If trial types are already saved correctly, just use those
-        if len(list(flatten(self.session['Tracking']['Trial Types']))) == len(list(flatten(stims_all))) and False:
+        if len(list(flatten(self.session['Tracking']['Trial Types']))) == len(list(flatten(stims_all))): # and False:
             self.trial_types = self.session['Tracking']['Trial Types'][vid_num]
         else: # Otherwise, compute them de novo
             arena_specific_trial_types(self, stims_video, vid)
@@ -132,12 +133,12 @@ def arena_specific_trial_types(self, stims_video, vid):
     # for the square arena, just do it based on time
     if self.obstacle_type == 'side wall 14' or self.obstacle_type == 'side wall 32':
         delayed_move_mice = ['CA7494']
-        if self.session.Metadata['mouse_id'] == 'CA7494': # moved later
+        if self.session.Metadata['mouse_id'] in delayed_move_mice: # moved later
             self.trial_types = [2 * int(s > 30 * 30 * 60) for s in stims_video]
         elif self.session.Metadata['mouse_id'] == 'CA6960': #moved back
             self.trial_types = [0,2,2,1,1]
         else:
-            self.trial_types = [2 * int(s > 19 * 30 * 60) for s in stims_video]
+            self.trial_types = [2 * int(s > 19.5 * 30 * 60) for s in stims_video]
 
     # for the void arena, just do it based on time
     elif self.obstacle_type == 'void':

@@ -5,11 +5,11 @@ def setup(object):
     '''    LOADING THE DATA    '''
     # Add recently added sessions or metadata to database
     object.file_name = 'project_obstacles_dataframe'
-    object.update_database = True
+    object.update_database = False
     # select which sessions to analyze ('all', 'experiment', 'number')
-    object.selector_type = 'all'
-    # object.selector = ['Circle wall down (no shelter)']
-    object.selector = [213, 214, 215, 216]
+    object.selector_type = 'number'
+    # object.selector = ['Circle wall down','Circle wall down (no baseline)']
+    object.selector = [50]
     # object.selector = [x for x in range(184,194)]
     # the most important parameter. dark for talks, light for papes.
     object.dark_theme = False
@@ -19,11 +19,11 @@ def setup(object):
     # Use DLC to analyze the raw videos
     object.do_tracking = False
     # Register arena to model arena
-    object.do_registration = True
+    object.do_registration = False
     # Do initial visualizations of the experiments
     object.do_processing = False
     # Analyze data and test hypotheses
-    object.do_analysis = False
+    object.do_analysis = True
 
 
     '''    PROCESSING OPTIONS    '''
@@ -38,7 +38,7 @@ def setup(object):
         # Capture spontaneous homings
         'spontaneous homings': False,
         # Decompose homings into piecewise linear bouts
-        'decompose homings': False,
+        'decompose homings': True,
         # Analyze exploration
         'exploration': False,
         # Simulate each strategy and get its likelihood
@@ -72,11 +72,11 @@ def setup(object):
         # Get speed traces
         'escape paths': False,
         # Get speed traces
-        'edginess': True,
+        'edginess': False,
         # Plot all traversals across the arena
         'prediction': False,
         # Get efficiency correlations
-        'efficiency': False,
+        'efficiency': True,
         # Get metrics by strategy
         'metrics': False,
         # Get speed traces
@@ -86,12 +86,12 @@ def setup(object):
 
     object.analysis_experiments= {
         # '''     many-condition edginess comparison (naive)    '''
-        # Which experiments to analyze
-        'experiments': [['Circle wall up'], 'Circle wall down (no shelter)', ['Circle wall down', 'Circle wall down (no baseline)'], ['Circle wall down', 'Circle lights on off (baseline)']], #
-        # # Which conditions to analyze
-        'conditions': [['no obstacle'],  'no obstacle', ['no obstacle', 'no obstacle'],['obstacle', 'obstacle']],
-        # # what to call each condition for plots
-        'labels': ['Open field', 'Obstacle removed (no shelter)', 'obstacle removed', 'Obstacle']}
+        # # Which experiments to analyze
+        # 'experiments': [['Circle wall up'], 'Circle wall down (no shelter)', ['Circle wall down', 'Circle wall down (no baseline)'], ['Circle wall down', 'Circle lights on off (baseline)']], #
+        # # # Which conditions to analyze
+        # 'conditions': [['no obstacle'],  'no obstacle', ['no obstacle', 'no obstacle'],['obstacle', 'obstacle']],
+        # # # what to call each condition for plots
+        # 'labels': ['Open field', 'Obstacle removed (no shelter)', 'obstacle removed', 'Obstacle']}
 
         # '''     many-condition initial traj comparison (naive)    '''
         # # Which experiments to analyze
@@ -100,7 +100,6 @@ def setup(object):
         # 'conditions': [['probe', 'probe'], ['obstacle','obstacle'], ['obstacle','obstacle'], 'no obstacle'],
         # # # what to call each condition for plots
         # 'labels': ['Unexpected obstacle','Obstacle trial 2-3', 'Obstacle trial 1', 'Open field']}
-
 
         # '''     many-condition edginess comparison (naive)    '''
         # # Which experiments to analyze
@@ -118,7 +117,7 @@ def setup(object):
         # # # what to call each condition for plots
         # 'labels': ['Open field', 'null', 'obstacle removed','null']}
         #
-        # # '''     many-condition edginess comparison (experienced)    '''
+        # '''     many-condition edginess comparison (experienced)    '''
         # # # Which experiments to analyze
         # 'experiments': ['Circle wall up (2)', 'Circle wall down (no baseline no naive)'],  #
         # # # Which conditions to analyze
@@ -134,13 +133,13 @@ def setup(object):
         # # # what to call each condition for plots
         # 'labels': ['obstacle light']}
 
-        # # '''     dark, obstacle     '''
-        # # Which experiments to analyze
-        # 'experiments': ['Circle wall down dark', 'Circle wall down (dark non naive)', 'Circle (dark)'],
+        # '''     dark, obstacle     '''
+        # Which experiments to analyze
+        # 'experiments': ['Circle wall down dark', 'Circle wall down (dark non naive)', 'Circle (dark)', 'Circle wall down dark (U shaped)'],
         # # # Which conditions to analyze
-        # 'conditions': ['obstacle', 'obstacle', 'no obstacle'],
+        # 'conditions': ['obstacle', 'obstacle', 'no obstacle', 'obstacle'],
         # # # what to call each condition for plots
-        # 'labels': ['obstacle dark', 'obstacle dark exp', 'open field dark']}
+        # 'labels': ['obstacle dark', 'obstacle dark exp', 'open field dark', 'U shaped dark']}
 
         # # # '''     dark, U-shaped obstacle     '''
         # # Which experiments to analyze
@@ -150,13 +149,13 @@ def setup(object):
         # # # what to call each condition for plots
         # 'labels': ['U shaped dark']}
 
-        # # '''     shelter on side    '''
+        # '''     shelter on side    '''
         # # Which experiments to analyze
-        # 'experiments': ['Circle wall (shelter on side)'],
+        # 'experiments': ['Circle void (shelter on side)', 'Circle wall (shelter on side)',],
         # # # Which conditions to analyze
-        # 'conditions': ['obstacle'],
+        # 'conditions': ['obstacle', 'obstacle'],
         # # # what to call each condition for plots
-        # 'labels': ['shelter on side']}
+        # 'labels': ['hole SOS', 'wall SOS']}
 
         # #'''     obstacle present        '''
         # # Which experiments to analyze
@@ -166,15 +165,23 @@ def setup(object):
         # # what to call each condition for plots
         # 'labels': ['Obstacle']}
 
-        # # '''     obstacle removed        '''
-        # Which experiments to analyze
-        # 'experiments': [['Circle wall down'],[ 'Circle wall down (no baseline)']],
+        # '''     obstacle removed        '''
+        # # Which experiments to analyze
+        # 'experiments': [['Circle wall down','Circle wall down (no baseline)']], #, ['Circle wall down', 'Circle lights on off (baseline)'],  'Square wall moves left'],
         # # Which conditions to analyze
-        # 'conditions': [['no obstacle'],[ 'no obstacle']],
+        # 'conditions': [['no obstacle','no obstacle']], #,['obstacle', 'obstacle'], 'no obstacle'],
         # # what to call each condition for plots
-        # 'labels': ['Obstacle removed baseline', 'Obstacle removed no baseline']}
+        # 'labels': ['Obstacle removed']} #, 'obstacle','obstacle long']}
 
-        # # '''     obstacle removed (experienced)        '''
+        # # '''     obstacle removed for efficiency plot        '''
+        # Which experiments to analyze
+        'experiments': [['Circle wall down', 'Circle wall down (no baseline)', 'Circle wall down (no baseline no naive)'], ['Circle wall down', 'Circle wall down (no baseline)', 'Circle wall down (no baseline no naive)'], ['Circle wall up', 'Circle wall up (2)']],
+        # Which conditions to analyze
+        'conditions': [['no obstacle', 'no obstacle', 'no obstacle'], ['no obstacle', 'no obstacle', 'no obstacle'], ['no obstacle', 'no obstacle']],
+        # what to call each condition for plots
+        'labels': ['Obstacle removed', 'Open field' , 'OR (exp)', 'OF (exp)']}
+
+        # # # '''     obstacle removed (experienced)        '''
         # # Which experiments to analyze
         # 'experiments': ['Circle wall down (no baseline no naive)', 'Circle wall up (2)'], #'Circle wall down light (U shaped)', 'Circle wall (11 shaped)',
         # # Which conditions to analyze
@@ -197,6 +204,31 @@ def setup(object):
         # 'conditions': ['no obstacle', ['obstacle', 'obstacle']],
         # # what to call each condition for plots
         # 'labels': ['Open field', 'Obstacle']}
+
+        # # '''     U-shaped and 11-shaped      '''
+        # # Which experiments to analyze
+        # 'experiments': ['Circle wall down light (U shaped)', ['Circle wall (11 shaped)', 'Circle wall down light (U shaped)']],  #
+        # # Which conditions to analyze
+        # 'conditions': ['obstacle', ['no obstacle', 'no obstacle']],
+        # # what to call each condition for plots
+        # 'labels': ['U shaped', '11 shaped']}
+
+        # # '''    11-shaped      '''
+        # Which experiments to analyze
+        # 'experiments': ['Circle wall (11 shaped)', 'Circle wall up'],  #
+        # # Which conditions to analyze
+        # 'conditions': ['obstacle', 'no obstacle'],
+        # # what to call each condition for plots
+        # 'labels': ['11 shaped', 'open']}
+
+        # # '''     exploration comparison      '''
+        # # Which experiments to analyze
+        # 'experiments': [['Circle wall up', 'Circle wall up (2)', 'Circle wall down'], ['Circle wall down', 'Circle lights on off (baseline)','Circle wall up', 'Circle wall up (2)'],
+        #                 'Circle void up', 'Circle wall (no shelter)', 'Circle void (no shelter)', 'Circle (no shelter)'],
+        # # Which conditions to analyze
+        # 'conditions': [['no obstacle', 'no obstacle', 'no obstacle'], ['obstacle', 'obstacle','obstacle', 'obstacle'],'obstacle','obstacle','obstacle', 'no obstacle'],
+        # # what to call each condition for plots
+        # 'labels': ['Open field', 'Obstacle', 'Hole obstacle', 'Wall no shelter','Hole no shelter','Empty']}
 
         # # # '''     hole obstacle       '''
         # # Which experiments to analyze
@@ -223,20 +255,20 @@ def setup(object):
         # 'labels': ['wall up', 'obstacle added', 'open field']} #''Open field (naive)', 'Open field (exp)']}
 
         # '''     square wall moves left       '''
-        # Which experiments to analyze
-        # 'experiments': [ 'Square wall moves left', ['Square wall moves right', 'Square wall left'], 'Square wall moves left'], #
-        # # Which conditions to analyze
-        # 'conditions': ['obstacle', ['no obstacle', 'no obstacle'], 'no obstacle'], #
-        # # what to call each condition for plots
-        # 'labels': ['wall shortened', 'obstacle short', 'obstacle long']} #
-
-        # # '''     food expts        '''
         # # Which experiments to analyze
-        # 'experiments': [['Circle food', 'Circle food wall up'],'Circle food wall down',  'Circle food wall down'],
+        # 'experiments': [ 'Square wall moves left', ['Square wall moves right', 'Square wall left'], 'Square wall moves left', 'Square wall moves right'], #
         # # Which conditions to analyze
-        # 'conditions': [['no obstacle', 'no obstacle'], 'no obstacle', 'obstacle'],
+        # 'conditions': ['obstacle', ['no obstacle', 'no obstacle'], 'no obstacle', 'obstacle'], #
         # # what to call each condition for plots
-        # 'labels': ['Food open field', 'Food wall down',  'Food obstacle']}
+        # 'labels': ['wall shortened', 'obstacle short', 'obstacle long', 'wall lengthened']} #
+
+        # '''     food expts        '''
+        # Which experiments to analyze
+        # 'experiments': [['Circle food', 'Circle food wall up'],'Circle food wall down'], #,  'Circle food wall down'],
+        # # Which conditions to analyze
+        # 'conditions': [['no obstacle', 'no obstacle'], 'no obstacle'], #, 'obstacle'],
+        # # what to call each condition for plots
+        # 'labels': ['Food open field', 'Food wall down']} #,  'Food obstacle']}
 
         # # # '''     food wall down expts        '''
         # # Which experiments to analyze

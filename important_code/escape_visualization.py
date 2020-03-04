@@ -61,7 +61,7 @@ def visualize_escape(self):
         frame = register_frame(frame, self.x_offset, self.y_offset, self.session.Registration, map1, map2)
         # prior to stimulus onset, refresh frame to initialized frame
         if frames_past_stimulus < 0:
-            video_arena = arena.copy() #self.arena_with_prev_trials.copy() #TEMPORARY
+            video_arena = self.arena_with_prev_trials.copy() #TEMPORARY: arena.copy() #
             model_mouse_mask_previous = 0
         # extract DLC coordinates and make a model mouse mask
         model_mouse_mask, large_mouse_mask, body_location = make_model_mouse_mask(self.coordinates, frame_num, model_mouse_mask_initial)

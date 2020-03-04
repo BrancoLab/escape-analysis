@@ -47,8 +47,8 @@ def explore(self, heat_map = True, path_from_shelter = True, silhouette_map = Tr
             model_mouse_mask = cv2.ellipse(model_mouse_mask_initial.copy(), body_location, (int(back_butt_dist * .7), int(back_butt_dist * .35)), 180 - body_angle, 0, 360, 100, thickness=-1)
             model_mouse_mask = cv2.ellipse(model_mouse_mask , shoulder_location, (int(back_butt_dist * .8), int(back_butt_dist*.23)), 180 - shoulder_angle ,0, 360, 100, thickness=-1)
             # determine color by time since shelter
-            if o:
-                f1 = (frame_num - start_frame)/total_time
+            if o and last_in_shelter.size:
+                f1 = (frame_num - self.start_frame)/total_time
                 f2 = 1 - f1
                 time_color = f1 * np.array([190, 240, 190]) + f2 * np.array([250, 220, 223])
                 multiplier = f1 * 40 + f2 * 80
@@ -69,7 +69,7 @@ def explore(self, heat_map = True, path_from_shelter = True, silhouette_map = Tr
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
         # color in final position
-        if o:
+        if o and last_in_shelter.size:
             _, contours, _ = cv2.findContours(model_mouse_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
             cv2.drawContours(exploration_arena, contours, 0, time_color, thickness=-1)
         # apply the contours and border to the image and save the image
@@ -80,9 +80,9 @@ def explore(self, heat_map = True, path_from_shelter = True, silhouette_map = Tr
         # Make a position heat map as well
         scale = 1
         # average all mice data
-        position = coordinates['butty_location']
-        H, x_bins, y_bins = np.histogram2d(position[0, 0:stim_frame], position[1, 0:stim_frame],
-                                           [np.arange(0, exploration_arena_trial.shape[1] + 1, scale), np.arange(0, exploration_arena_trial.shape[0] + 1, scale)], normed=True)
+        position = self.coordinates['butty_location']
+        H, x_bins, y_bins = np.histogram2d(position[0, 0:self.stim_frame], position[1, 0:self.stim_frame],
+                                           [np.arange(0, exploration_arena.shape[1] + 1, scale), np.arange(0, exploration_arena.shape[0] + 1, scale)], normed=True)
         exploration_all = H.T
 
         # gaussian blur
@@ -104,7 +104,7 @@ def explore(self, heat_map = True, path_from_shelter = True, silhouette_map = Tr
         exploration_image[exploration_image > 255] = 255
         exploration_image = exploration_image.astype(np.uint8)
 
-        exploration_image[(arena > 0) * (exploration_image[:,:,0] < 10)] = 10
+        exploration_image[(self.exploration_arena[:,:,0] > 0) * (exploration_image[:,:,0] < 10)] = 10
         # exploration_all[(arena > 0) * (exploration_all[:, :, 0] == 0)] = 20
         # exploration_image_save = cv2.copyMakeBorder(exploration_image, border_size, 0, 0, 0, cv2.BORDER_CONSTANT, value=0)
         # textsize = cv2.getTextSize(videoname, 0, .55, 1)[0]
@@ -115,4 +115,7 @@ def explore(self, heat_map = True, path_from_shelter = True, silhouette_map = Tr
         # cv2.imshow('traces', exploration_all)
         cv2.waitKey(1)
         exploration_image = cv2.cvtColor(exploration_image, cv2.COLOR_RGB2BGR)
-        scipy.misc.imsave(os.path.join(savepath, videoname + '_exploration.tif'), exploration_image)
+        scipy.misc.imsave(os.path.join(self.save_folder, self.videoname + '_exploration2.tif'), exploration_image)
+
+        scipy.misc.imsave(os.path.join(self.save_folder, self.videoname + '_exploration2.tif'), exploration_all)
+

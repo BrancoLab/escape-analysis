@@ -198,9 +198,9 @@ def plot_escape_paths(self):
     non_escape_color = np.array([0,0,0])
 
     fps = 30
-    escape_duration = 6 # #12 #6 #9 for food
+    escape_duration = 6 #6 #12 # #12 #6 #9 for food # 18 for U
     min_distance_to_shelter = 30
-    HV_cutoff = 0.681  #.75 #.7
+    HV_cutoff = -10 #0.681  #.75 #.7
 
     # initialize all data for stats
     all_data = [[], [], [], []]
@@ -259,6 +259,12 @@ def plot_escape_paths(self):
 # group_B = [[1,0,0],[0,0,0,0],[0,0,0],[1,0,0],[0,0,0]]
 # permutation_test(group_B, group_A, iterations = 10000, two_tailed = False)
 
+# obstacle = [[0],[1],[0,0,0],[0,0],[0,1],[1,0],[0,0,0], [1]]
+# obstacle_exp = [[0,1],[0,0,0,0,1],[0,1],[0]]
+# open_field = [[1,0,0],[0,0,0,0],[0,0,0],[1,0,0],[0,0,0],[0,0,0]]
+# U_shaped = [[0,1],[1,1], [1,1], [0,0,1], [0,0,0], [0], [1], [0], [0,1], [0,1,0,0], [0,0,0]]
+# permutation_test(open_field, obstacle, iterations = 10000, two_tailed = False)
+
 
 
 
@@ -267,7 +273,7 @@ def plot_edginess(self):
     fps = 30
     escape_duration = 6 #9 #6
     HV_cutoff = .681 #.7#5 #.7 #.75 #
-    ETD = 8
+    ETD = 10#8
     traj_loc = 40
 
     edge_vector_color = np.array([.98, .9, .6])**5
@@ -279,7 +285,7 @@ def plot_edginess(self):
     colors = [np.array([.7, 0, .3]), np.array([0, .8, .5])]
     colors = [np.array([.3,.3,.3]), np.array([1, .2, 0]), np.array([0, .8, .4]), np.array([0, .7, .9])]
     colors = [np.array([.3, .3, .3]), np.array([1, .2, 0]), np.array([.7, 0, .7]), np.array([0, .7, .9])]
-    # colors = [np.array([0, 0, 0]), np.array([0, 0, 0]),np.array([0, 0, 0]), np.array([0, 0, 0])]
+    colors = [np.array([0, 0, 0]), np.array([0, 0, 0]),np.array([0, 0, 0]), np.array([0, 0, 0])]
     offset = [0,.2, .2, 0]
 
     # initialize figures
@@ -288,109 +294,130 @@ def plot_edginess(self):
     all_data = [[],[],[],[]]
     all_conditions = []
     mouse_ID = []; m = 1
-    # loop over experiments and conditions
-    for c, (experiment, condition) in enumerate(zip(self.experiments, self.conditions)):
-        # extract experiments from nested list
-        sub_experiments, sub_conditions = extract_experiments(experiment, condition)
-        # get the number of trials
-        number_of_trials = get_number_of_trials(sub_experiments, sub_conditions, self.analysis)
-        number_of_mice = get_number_of_mice(sub_experiments, sub_conditions, self.analysis)
-        t_total = 0
-        # initialize array to fill in with each trial's data
-        edginess, end_idx, time_since_down, time_to_shelter, time_to_shelter_all, prev_edginess, scaling_factor, time_in_center, trial_num, _, _ = \
-            initialize_variable_edginess(number_of_trials, self, sub_experiments)
-        mouse_ID_trial = edginess.copy()
-        # loop over each experiment and condition
-        for e, (experiment, condition) in enumerate(zip(sub_experiments, sub_conditions)):
-            # loop over each mouse
-            for i, mouse in enumerate(self.analysis[experiment][condition]['start time']):
-                # initialize mouse data for stats
-                mouse_data = [[],[],[],[]]
-                print(mouse)
-                if self.analysis_options['control'] and not mouse=='control': continue
-                if not self.analysis_options['control'] and mouse=='control': continue
-                # loop over each trial
-                prev_homings = []
-                t = 0
-                for trial in range(len(self.analysis[experiment][condition]['end time'][mouse])):
-                    trial_num += 1
-                    # impose conditions
-                    if 'food' in experiment:
-                        if t > 8: continue
-                        if condition == 'no obstacle' and self.analysis[experiment][condition]['start time'][mouse][trial] < 20: continue
-                    else:
-                        # if trial > 2: continue
-                        # if condition == 'obstacle' and trial != 0: continue
-                        # if condition == 'obstacle' and c == 1 and not trial: continue
-                        # if condition == 'obstacle' and c == 2 and trial: continue
+    dist_data_EV_other_all = []
 
-                        if t>2: continue
+    delta_ICs, delta_x_end = [], []
 
-                    if trial and 'quick' in experiment: continue
-                    elif 'Square' in experiment:
-                        # only three trials
-                        if t > 2: continue
-                        # y_idx = self.analysis[experiment][condition]['path'][mouse][trial][1]
-                        # x_idx = self.analysis[experiment][condition]['path'][mouse][trial][0]
-                        # # get where the mouse is in the center
-                        # y_center_idx = np.argmin(abs(y_idx * scaling_factor - 50))
-                        # # only do wall-left trials (this captures all of them only for this particular dataset!)
-                        # if (x_idx[y_center_idx] * scaling_factor) > 72 and False: continue
-                        # # only ones that start to the left of the obstacle edge
-                        # if x_idx[0] * scaling_factor > 60 and False: continue
-                        # # not the one HV, for the edge-vector-only plot
-                        # if y_idx[0] * scaling_factor < 9: continue  # 11
-                    else:
-                        # skip certain trials
-                        y_start = self.analysis[experiment][condition]['path'][mouse][trial][1][0] * scaling_factor
-                        x_start = self.analysis[experiment][condition]['path'][mouse][trial][0][0] * scaling_factor
-                        if y_start > 25: continue
-                        if abs(x_start-50) > 25: continue
-
-                    end_idx[trial_num] = self.analysis[experiment][condition]['end time'][mouse][trial]
-                    if np.isnan(end_idx[trial_num]):
-                        mouse_data[3].append(0)
-                        continue
-                    if (end_idx[trial_num] > escape_duration * fps):
-                        mouse_data[3].append(0)
-                        continue
-
-                    # add data
-                    edginess[trial_num] = self.analysis[experiment][condition]['edginess'][mouse][trial]
-                    if 'Square' in experiment and edginess[trial_num] <=-.4:
-                        edginess[trial_num] = np.nan
-                        continue
-
-                    # get previous edginess #TEMPORARY COMMENT
-                    if False or True:
-                        time_to_shelter, SR = get_prev_edginess(ETD, condition, experiment, mouse, prev_edginess, scaling_factor, self, traj_loc, trial, trial_num)
-                        # get time in center
-                        time_in_center[trial_num] = self.analysis[experiment][condition]['in center'][mouse][trial] / 30
-                    # get time since obstacle removal?
-                    # time_since_down[trial_num] = self.analysis[experiment][condition]['start time'][mouse][trial] - self.analysis[experiment]['probe']['start time'][mouse][0]
-                    # add data for stats
-
-                    mouse_data[0].append(int(edginess[trial_num] > HV_cutoff))
-                    mouse_data[1].append(edginess[trial_num])
-                    mouse_data[2].append(prev_edginess[trial_num])
-                    mouse_data[3].append(1)
-                    mouse_ID_trial[trial_num] = m
-
-                    t += 1
-                    t_total += 1
-                #append data for stats
-                if mouse_data[0]:
-                    all_data[0].append(mouse_data[0])
-                    all_data[1].append(mouse_data[1])
-                    all_data[2].append(mouse_data[2])
-                    all_data[3].append(mouse_data[3])
-                    all_conditions.append(c)
-                    mouse_ID.append(m); m+= 1
-                else:
+    repetitions = 15
+    for rand_select in range(repetitions):
+        # loop over experiments and conditions
+        for c, (experiment, condition) in enumerate(zip(self.experiments, self.conditions)):
+            # extract experiments from nested list
+            sub_experiments, sub_conditions = extract_experiments(experiment, condition)
+            # get the number of trials
+            number_of_trials = get_number_of_trials(sub_experiments, sub_conditions, self.analysis)
+            number_of_mice = get_number_of_mice(sub_experiments, sub_conditions, self.analysis)
+            t_total = 0
+            # initialize array to fill in with each trial's data
+            edginess, end_idx, time_since_down, time_to_shelter, time_to_shelter_all, prev_edginess, scaling_factor, time_in_center, trial_num, _, _, dist_to_SH, dist_to_other_SH = \
+                initialize_variable_edginess(number_of_trials, self, sub_experiments)
+            mouse_ID_trial = edginess.copy()
+            # loop over each experiment and condition
+            for e, (experiment, condition) in enumerate(zip(sub_experiments, sub_conditions)):
+                # loop over each mouse
+                for i, mouse in enumerate(self.analysis[experiment][condition]['start time']):
+                    # initialize mouse data for stats
+                    mouse_data = [[],[],[],[]]
                     print(mouse)
-                    print('!!!!!')
-                # get prev homings
-                time_to_shelter_all.append(time_to_shelter)
+                    if self.analysis_options['control'] and not mouse=='control': continue
+                    if not self.analysis_options['control'] and mouse=='control': continue
+                    # loop over each trial
+                    prev_homings = []
+                    t = 0
+                    for trial in range(len(self.analysis[experiment][condition]['end time'][mouse])):
+                        trial_num += 1
+                        # impose conditions
+                        if 'food' in experiment:
+                            if t > 8: continue
+                            if condition == 'no obstacle' and self.analysis[experiment][condition]['start time'][mouse][trial] < 20: continue
+                        else:
+                            # if trial > 2: continue
+                            # if condition == 'obstacle' and trial != 0: continue
+                            # if condition == 'obstacle' and c == 1 and not trial: continue
+                            # if condition == 'obstacle' and c == 2 and trial: continue
+
+                            if t>2: continue
+
+                        if trial and 'quick' in experiment: continue
+                        elif 'Square' in experiment:
+                            # only three trials
+                            if t > 2: continue
+                            # y_idx = self.analysis[experiment][condition]['path'][mouse][trial][1]
+                            # x_idx = self.analysis[experiment][condition]['path'][mouse][trial][0]
+                            # # get where the mouse is in the center
+                            # y_center_idx = np.argmin(abs(y_idx * scaling_factor - 50))
+                            # # only do wall-left trials (this captures all of them only for this particular dataset!)
+                            # if (x_idx[y_center_idx] * scaling_factor) > 72 and False: continue
+                            # # only ones that start to the left of the obstacle edge
+                            # if x_idx[0] * scaling_factor > 60 and False: continue
+                            # # not the one HV, for the edge-vector-only plot
+                            # if y_idx[0] * scaling_factor < 9: continue  # 11
+                        else:
+                            # skip certain trials
+                            y_start = self.analysis[experiment][condition]['path'][mouse][trial][1][0] * scaling_factor
+                            x_start = self.analysis[experiment][condition]['path'][mouse][trial][0][0] * scaling_factor
+                            if y_start > 25: continue
+                            if abs(x_start-50) > 25: continue
+
+                        end_idx[trial_num] = self.analysis[experiment][condition]['end time'][mouse][trial]
+                        if np.isnan(end_idx[trial_num]):
+                            mouse_data[3].append(0)
+                            continue
+                        if (end_idx[trial_num] > escape_duration * fps):
+                            mouse_data[3].append(0)
+                            continue
+
+                        # add data
+                        edginess[trial_num] = self.analysis[experiment][condition]['edginess'][mouse][trial]
+                        if 'Square' in experiment and edginess[trial_num] <=-.4:
+                            edginess[trial_num] = np.nan
+                            continue
+
+                        # get previous edginess #TEMPORARY COMMENT
+                        if False or True:
+                            time_to_shelter, SR = get_prev_edginess(ETD, condition, experiment, mouse, prev_edginess, dist_to_SH, dist_to_other_SH,
+                                                                    scaling_factor, self, traj_loc, trial, trial_num, edginess, delta_ICs, delta_x_end)
+                            # get time in center
+                            time_in_center[trial_num] = self.analysis[experiment][condition]['in center'][mouse][trial] / 30
+
+                            # if edginess[trial_num] > HV_cutoff:
+                            #     print(trial)
+                            #     print(dist_to_SH[trial_num])
+                            # if edginess[trial_num] > 0.8 and prev_edginess[trial_num] < .6:
+                            #     print('----!!!!----')
+                            #     print(trial)
+                            #     print( edginess[trial_num] )
+                            #     print( prev_edginess[trial_num] )
+                            #     print('----!!!!----')
+
+
+                        # get time since obstacle removal?
+                        # time_since_down[trial_num] = self.analysis[experiment][condition]['start time'][mouse][trial] - self.analysis[experiment]['probe']['start time'][mouse][0]
+                        # add data for stats
+
+                        mouse_data[0].append(int(edginess[trial_num] > HV_cutoff))
+                        mouse_data[1].append(edginess[trial_num])
+                        mouse_data[2].append(prev_edginess[trial_num])
+                        mouse_data[3].append(1)
+                        mouse_ID_trial[trial_num] = m
+
+                        t += 1
+                        t_total += 1
+                    #append data for stats
+                    if mouse_data[0]:
+                        all_data[0].append(mouse_data[0])
+                        all_data[1].append(mouse_data[1])
+                        all_data[2].append(mouse_data[2])
+                        all_data[3].append(mouse_data[3])
+                        all_conditions.append(c)
+                        mouse_ID.append(m); m+= 1
+                    else:
+                    #     print(mouse)
+                        print('~~0 trials~~')
+                    # get prev homings
+                    time_to_shelter_all.append(time_to_shelter)
+
+            dist_data_EV_other_all = np.append(dist_data_EV_other_all, dist_to_other_SH[edginess > HV_cutoff])
 
         print(t_total)
 
@@ -408,7 +435,7 @@ def plot_edginess(self):
         try:
             kde = fit_kde(plot_data, bw=.04)  # .04
             if 'Square' in experiment:
-                plot_kde(ax, kde, plot_data, z=3*c + .3, vertical=True, normto=1, color=[.5,.5,.5], violin=False, clip=False)
+                plot_kde(ax, kde, plot_data, z=3*c + .3, vertical=True, normto=1, color=[.5,.5,.5], violin=False, clip=False, cutoff = HV_cutoff, cutoff_colors = [homing_vector_color[::-1], edge_vector_color[::-1]])
             else:
                 plot_kde(ax, kde, plot_data, z=3*c + .3, vertical=True, normto=1.3, color=[.5,.5,.5], violin=False, clip=True, cutoff = HV_cutoff, cutoff_colors = [homing_vector_color[::-1], edge_vector_color[::-1]])
         except: pass
@@ -442,8 +469,38 @@ def plot_edginess(self):
         #     Q3 = np.percentile(plot_data, 75)
         #
         #     ax5.bar((Q3 + Q1)/2 + 3 * np.pi/2, 1.5 + offset[c], width=Q3-Q1, bottom=0.0, color=colors[c], alpha=0.35)
+        '''         plot the correaltion between dist to ICs and dist to x final        '''
+        plt.ion()
 
-        if False: # or True:
+        fig6, ax6 = plt.subplots(figsize=(9, 9))
+        # ax6.set_xlim([-2, 59])
+        # ax6.set_ylim([-2, 59])
+        # ax6.set_xticks(np.arange(0, 60, 10))
+        # ax6.set_xticks(np.arange(0, 60, 10))
+
+        x_data = list(flatten(delta_ICs))
+        y_data = list(flatten(delta_x_end))
+
+        ax6.scatter(x_data, y_data, color=colors[c], s=60, alpha=1, edgecolors=colors[c] / 2, linewidth=1)
+        # do correlation
+        r, p = scipy.stats.pearsonr(x_data, y_data)
+        print(r, p)
+        # do linear regression
+        plot_data_corr, prediction = do_linear_regression(np.array(y_data), np.array(x_data))
+        # plot linear regresssion
+        ax6.plot(plot_data_corr, prediction['Pred'].values, color=colors[c], linewidth=1, linestyle='--', alpha=.7)  # color=[.0, .0, .0]
+        ax6.fill_between(plot_data_corr, prediction['lower'].values, prediction['upper'].values, color=colors[c], alpha=.075)  # color=[.2, .2, .2]
+
+
+        plt.draw()
+        plt.pause(0.01)
+
+        fig6.savefig(os.path.join(self.summary_plots_folder, 'Correlation to ICs.tif'), format='tif', bbox_inches='tight', pad_inches=0)
+        fig6.savefig(os.path.join(self.summary_plots_folder, 'Correlation to ICs.eps'), format='eps', bbox_inches='tight', pad_inches=0)
+
+
+
+        if False or True:
             '''     plot the correlation    '''
             # do both prev homings and time in center # np.array(time_since_down) # 'Time since removal'
             for plot_data_corr, fig_corr, ax_corr, data_label in zip([prev_edginess, time_in_center], [fig2, fig3], [ax2, ax3], ['Prior homings','Exploration']): #
@@ -457,7 +514,7 @@ def plot_edginess(self):
                 plot_data_corr, prediction = do_linear_regression(plot_data, plot_data_corr)
                 # plot linear regresssion
                 ax_corr.plot(plot_data_corr, prediction['Pred'].values, color=colors[c], linewidth=1, linestyle='--', alpha=.7) #color=[.0, .0, .0]
-                ax_corr.fill_between(plot_data_corr, prediction['lower'].values, prediction['upper'].values, color=colors[c], alpha=.05) #color=[.2, .2, .2]
+                ax_corr.fill_between(plot_data_corr, prediction['lower'].values, prediction['upper'].values, color=colors[c], alpha=.075) #color=[.2, .2, .2]
                 fig_corr.savefig(os.path.join(self.summary_plots_folder, 'Edginess by ' + data_label + ' - ' + self.labels[c] + '.tif'), format='tif')
                 fig_corr.savefig(os.path.join(self.summary_plots_folder, 'Edginess by ' + data_label + ' - ' + self.labels[c] + '.eps'), format='eps')
 
@@ -465,6 +522,37 @@ def plot_edginess(self):
             # data_x = list(np.array(all_data[2])[np.array(all_conditions) == c])
             # data_y = list(np.array(all_data[1])[np.array(all_conditions) == c])
             # permutation_correlation(data_x, data_y, iterations=10000, two_tailed=False, pool_all = True)
+
+    '''         plot the dist to prev edge vectors      '''
+    dist_data_EV = dist_to_SH[data>HV_cutoff]
+    dist_data_EV = dist_data_EV[~np.isnan(dist_data_EV)]
+
+    # dist_data_EV_other = dist_to_other_SH[data>HV_cutoff]
+    dist_data_EV_other_all = dist_data_EV_other_all[~np.isnan(dist_data_EV_other_all)]
+
+    # plt.ion()
+
+    fig6, ax6 = plt.subplots(figsize=(9, 9))
+
+    bin_size = 5
+    bins = np.arange(0,40,bin_size)
+    widths = np.diff(bins)
+    hist_same_side, bins = np.histogram(dist_data_EV, bins=bins, normed=True)
+    hist_other_side, bins = np.histogram(dist_data_EV_other_all, bins=bins, normed=True)
+
+    plt.bar(bins[:-1] + bin_size / 2, hist_same_side * bin_size, widths, facecolor = edge_vector_color[::-1], alpha = .8)
+    plt.bar(bins[:-1] + bin_size / 2, hist_other_side * bin_size, widths, facecolor= homing_vector_color[::-1], alpha= .35)
+
+    plt.xlim([-5, 35])
+    plt.ylim([0, .36])
+    plt.yticks([0, .1, .2, .3])
+
+    permutation_test(list(dist_data_EV), list(dist_data_EV_other_all), iterations=10000, two_tailed=True)
+
+    # save the plot
+    fig6.savefig(os.path.join(self.summary_plots_folder, 'Generalizability.tif'), format='tif', bbox_inches='tight', pad_inches=0)
+    fig6.savefig(os.path.join(self.summary_plots_folder, 'Generalizability.eps'), format='eps', bbox_inches='tight', pad_inches=0)
+
     # save the plot
     fig.savefig(os.path.join(self.summary_plots_folder, 'Edginess comparison.tif'), format='tif', bbox_inches='tight', pad_inches=0)
     fig.savefig(os.path.join(self.summary_plots_folder, 'Edginess comparison.eps'), format='eps', bbox_inches='tight', pad_inches=0)
@@ -671,7 +759,7 @@ def plot_prediction(self):
     # initialize parameters
     fps = 30
     escape_duration = 6
-    ETD = 4
+    ETD = 10 #4
     traj_loc = 40
 
 
@@ -685,7 +773,7 @@ def plot_prediction(self):
         number_of_trials = get_number_of_trials(sub_experiments, sub_conditions, self.analysis)
         number_of_mice = get_number_of_mice(sub_experiments, sub_conditions, self.analysis)
         # initialize array to fill in with each trial's data
-        edginess, end_idx, angle_turned, _, _, prev_edginess, scaling_factor, _, trial_num, prev_movement_and_ICs, data_y_for_prev_movement = \
+        edginess, end_idx, angle_turned, _, _, prev_edginess, scaling_factor, _, trial_num, prev_movement_and_ICs, data_y_for_prev_movement, dist_to_SH, dist_to_other_SH = \
             initialize_variable_edginess(number_of_trials, self, sub_experiments)
         # loop over each experiment and condition
         for e, (experiment, condition) in enumerate(zip(sub_experiments, sub_conditions)):
@@ -706,14 +794,15 @@ def plot_prediction(self):
                     # skip certain trials
                     y_start = self.analysis[experiment][condition]['path'][mouse][trial][1][0] * scaling_factor
                     x_start = self.analysis[experiment][condition]['path'][mouse][trial][0][0] * scaling_factor
-                    if y_start > 23: continue
-                    if abs(x_start-50) > 23: continue #22
+                    if y_start > 25: continue
+                    if abs(x_start-50) > 25: continue #22
                     # add data
                     edginess[trial_num] = abs(self.analysis[experiment][condition]['edginess'][mouse][trial])
                     # get previous edginess
-                    time_to_shelter, SR = get_prev_edginess(ETD, condition, experiment, mouse, prev_edginess, scaling_factor, self, traj_loc, trial, trial_num)
+                    time_to_shelter, SR = get_prev_edginess(ETD, condition, experiment, mouse, prev_edginess, dist_to_SH, dist_to_other_SH, scaling_factor, self, traj_loc, trial, trial_num, edginess, [], [])
                     # get the angle turned during the escape
-                    angle_turned[trial_num] = self.analysis[experiment][condition]['movement'][mouse][trial][2]
+                    angle_turned[trial_num] = self.analysis[experiment][condition]['movement'][mouse][trial][2] #turn angle
+                    # angle_turned[trial_num] = self.analysis[experiment][condition]['x escape'][mouse][trial] # X_SH TEMP
                     # get the angle turned, delta x, delta y, and delta phi of previous homings
                     # x_start, y_start, angle_start, turn_angle
                     bout_start_angle = self.analysis[experiment][condition]['movement'][mouse][trial][1]
@@ -728,10 +817,12 @@ def plot_prediction(self):
                     prev_movement_and_ICs[0].append([x - bout_start_position[0] for x in self.analysis[experiment][condition]['prev movements'][mouse][trial][0]])
                     prev_movement_and_ICs[1].append([y - bout_start_position[1] for y in self.analysis[experiment][condition]['prev movements'][mouse][trial][1]])
                     prev_movement_and_ICs[2].append([abs(sa - bout_start_angle) for sa in self.analysis[experiment][condition]['prev movements'][mouse][trial][2]])
-                    prev_movement_and_ICs[3].append(self.analysis[experiment][condition]['prev movements'][mouse][trial][3])
+                    prev_movement_and_ICs[3].append(self.analysis[experiment][condition]['prev movements'][mouse][trial][3]) # turn angle
+                    # prev_movement_and_ICs[3].append(self.analysis[experiment][condition]['prev movements'][mouse][trial][4]) # X_SH movement TEMP
 
                     data_y_for_prev_movement[0].append(list(np.ones(len(self.analysis[experiment][condition]['prev movements'][mouse][trial][0])) * edginess[trial_num]))
                     data_y_for_prev_movement[1].append(list(np.ones(len(self.analysis[experiment][condition]['prev movements'][mouse][trial][0])) * angle_turned[trial_num]))
+
 
         # format the prev movement and ICs data
         delta_x = list(flatten(prev_movement_and_ICs[0]))
@@ -743,15 +834,17 @@ def plot_prediction(self):
         turn_angle_for_prev_movement = list(flatten(data_y_for_prev_movement[1]))
 
         prev_movements_and_ICs_array = np.ones((len(delta_x), 4)) * 0 #np.nan
-        prev_movements_and_ICs_array[:, 0] = scipy.stats.zscore(delta_x) * turn_angle
-        prev_movements_and_ICs_array[:, 1] = scipy.stats.zscore(delta_y) * turn_angle
-        prev_movements_and_ICs_array[:, 2] = scipy.stats.zscore(delta_angle) * turn_angle
+        prev_movements_and_ICs_array[:, 0] = scipy.stats.zscore(delta_x) * turn_angle #* 0
+        prev_movements_and_ICs_array[:, 1] = scipy.stats.zscore(delta_y) * turn_angle #* 0
+        prev_movements_and_ICs_array[:, 2] = scipy.stats.zscore(delta_angle) * turn_angle# * 0
         prev_movements_and_ICs_array[:, 3] = turn_angle
 
+
+
         # get the data
-        predict_data_y_all = [[edginess[~np.isnan(edginess)].reshape(-1, 1), # for the mean edginess input data
-                              angle_turned[~np.isnan(edginess)].reshape(-1, 1)], # for the mean edginess input data
-                              [edginess_for_prev_movement, turn_angle_for_prev_movement]] # for the movements input data
+        predict_data_y_all = [[ edginess[~np.isnan(edginess)].reshape(-1, 1), # for the mean edginess input data
+                                 angle_turned[~np.isnan(edginess)].reshape(-1, 1)], # for the mean edginess input data
+                                  [edginess_for_prev_movement, turn_angle_for_prev_movement]] # for the movements input data
         data_y_labels = ['trajectory', 'angle']
 
         predict_data_x_all = [prev_edginess[~np.isnan(edginess)].reshape(-1, 1),  # mean prev edginess
@@ -797,12 +890,13 @@ def plot_prediction(self):
 def plot_efficiency(self):
     # initialize parameters
     fps = 30
-    escape_duration = 9
-    HV_cutoff = .75
+    traj_loc = 40
+    escape_duration = 6
+    HV_cutoff = .681
     ETD = np.inf
     ax2, fig2, ax3, fig3 = initialize_figures_efficiency(self)
-    efficiency_data = [[],[]]
-    duration_data = [[],[]]
+    efficiency_data = [[],[],[],[]]
+    duration_data = [[],[],[],[]]
     # initialize arrays for stats
     efficiency_data_all = []
     duration_data_all = []
@@ -811,6 +905,7 @@ def plot_efficiency(self):
     mouse_ID = []; m = 1
     data_condition = ['naive','experienced']
     data_condition = ['food','escape']
+    data_condition = ['OR - EV', 'OR - HV', 'OF']
 
     # loop over experiments and conditions
     for c, (experiment, condition) in enumerate(zip(self.experiments, self.conditions)):
@@ -820,7 +915,7 @@ def plot_efficiency(self):
         number_of_trials = get_number_of_trials(sub_experiments, sub_conditions, self.analysis)
         number_of_mice = get_number_of_mice(sub_experiments, sub_conditions, self.analysis)
         # initialize array to fill in with each trial's data
-        efficiency, efficiency_RT, end_idx, num_prev_homings, scaling_factor, time, trial_num, trials, edginess, _, _, _, _, _, _ = \
+        efficiency, efficiency_RT, end_idx, num_prev_homings, scaling_factor, time, trial_num, trials, edginess, prev_edginess, dist_to_SH, dist_to_other_SH, _, _, _ = \
             initialize_variables_efficiency(number_of_trials, self, sub_experiments)
         # loop over each experiment and condition
         for e, (experiment, condition) in enumerate(zip(sub_experiments, sub_conditions)):
@@ -847,8 +942,22 @@ def plot_efficiency(self):
                     x_start = self.analysis[experiment][condition]['path'][mouse][trial][0][0] * scaling_factor
                     if y_start > 25: continue
                     if abs(x_start-50) > 25: continue #22
+
+                    # get prev edginess
+                    _, _ = get_prev_edginess(ETD, condition, experiment, mouse, prev_edginess, dist_to_SH, dist_to_other_SH,
+                                                            scaling_factor, self, traj_loc, trial, trial_num, edginess, [], [])
+
+                    # only do predict edgy:
+                    if c == 0:
+                        if prev_edginess[trial_num] <= HV_cutoff and 'down' in experiment: continue
+                    elif c == 1:
+                        if prev_edginess[trial_num] > HV_cutoff and 'down' in experiment: continue
+
                     # add data
                     fill_in_trial_data_efficiency(ETD, condition, efficiency, efficiency_RT, experiment, mouse, num_prev_homings, self, time, trial, trial_num, trials, edginess)
+
+
+
                     # normalize end idx to
                     RT = self.analysis[experiment][condition]['RT'][mouse][trial]
                     if not RT: continue
@@ -876,11 +985,12 @@ def plot_efficiency(self):
         end_idx[np.isnan(efficiency)] = np.nan
         # loop over data to plot
         for i, (data, data_label) in enumerate(zip([efficiency, end_idx, edginess], ['Efficiency', 'Duration', 'Trajectory'])):
-            for x_data, x_data_label in zip([num_prev_homings, trials+1, time], ['Prior homings', 'Trials','Time']):
+
         # for i, (data, data_label) in enumerate(zip([edginess, efficiency, end_idx], ['Trajectory', 'Efficiency', 'Duration'])):
         #     for x_data, x_data_label in zip([num_prev_homings], ['Prior homings']):
-                plot_data = data[~np.isnan(data)]
-                if False:
+            plot_data = data[~np.isnan(data)]
+            if False:
+                for x_data, x_data_label in zip([num_prev_homings, trials + 1, time], ['Prior homings', 'Trials', 'Time']):
                     # initialize figure
                     fig1, ax1 = plt.subplots(figsize=(9, 9))
                     # set up the figure
@@ -913,28 +1023,28 @@ def plot_efficiency(self):
                     # save the plot
                     plt.savefig(os.path.join(self.summary_plots_folder, data_label + ' by ' + x_data_label + ' - ' + self.labels[c] + '.tif'), format='tif')
                     plt.savefig(os.path.join(self.summary_plots_folder, data_label + ' by ' + x_data_label + ' - ' + self.labels[c] + '.eps'), format='eps')
-                # plot the boxplot
-                if data_label == 'Efficiency':
-                    ax, fig = ax2, fig2
-                    efficiency_data[c] = plot_data
-                elif data_label == 'Duration':
-                    ax, fig = ax3, fig3
-                    duration_data[c] = plot_data
-                else: continue
-                scatter_axis = scatter_the_axis_efficiency(plot_data, np.ones_like(plot_data)*c)
-                ax.scatter(scatter_axis, plot_data, color=[0, 0, 0], s=40, alpha=1, edgecolor=[0, 0, 0], linewidth=1)
-                # plot kde
-                kde = fit_kde(plot_data, bw=.02) #.2)  # .04
-                plot_kde(ax, kde, plot_data, z=c + .1, vertical=True, normto=.3, color=[.75, .75, .75], violin=False, clip=True)  # True)
-                # plot errorbar
-                median = np.percentile(plot_data, 50)
-                third_quartile = np.percentile(plot_data, 75)
-                first_quartile = np.percentile(plot_data, 25)
-                ax.errorbar(c - .2, median, yerr=np.array([[median - first_quartile], [third_quartile - median]]), color=[0,0,0], capsize=10, capthick=3, alpha=1, linewidth=3)
-                ax.scatter(c - .2, median, color=[0,0,0], s=175, alpha=1)
-                # save the plot
-                fig.savefig(os.path.join(self.summary_plots_folder, data_label + ' comparison - ' + self.labels[c] + '.tif'), format='tif')
-                fig.savefig(os.path.join(self.summary_plots_folder, data_label + ' comparison - ' + self.labels[c] + '.eps'), format='eps')
+            # plot the boxplot
+            if data_label == 'Efficiency':
+                ax, fig = ax2, fig2
+                efficiency_data[c] = plot_data
+            elif data_label == 'Duration':
+                ax, fig = ax3, fig3
+                duration_data[c] = plot_data
+            else: continue
+            scatter_axis = scatter_the_axis_efficiency(plot_data, np.ones_like(plot_data)*c)
+            ax.scatter(scatter_axis, plot_data, color=[0, 0, 0], s=40, alpha=1, edgecolor=[0, 0, 0], linewidth=1)
+            # plot kde
+            kde = fit_kde(plot_data, bw=.02) #.2)  # .04
+            plot_kde(ax, kde, plot_data, z=c + .1, vertical=True, normto=.3, color=[.75, .75, .75], violin=False, clip=True)  # True)
+            # plot errorbar
+            median = np.percentile(plot_data, 50)
+            third_quartile = np.percentile(plot_data, 75)
+            first_quartile = np.percentile(plot_data, 25)
+            ax.errorbar(c - .2, median, yerr=np.array([[median - first_quartile], [third_quartile - median]]), color=[0,0,0], capsize=10, capthick=3, alpha=1, linewidth=3)
+            ax.scatter(c - .2, median, color=[0,0,0], s=175, alpha=1)
+            # save the plot
+            fig.savefig(os.path.join(self.summary_plots_folder, data_label + ' comparison - ' + self.labels[c] + '.tif'), format='tif')
+            fig.savefig(os.path.join(self.summary_plots_folder, data_label + ' comparison - ' + self.labels[c] + '.eps'), format='eps')
 
     plt.show()
 
@@ -954,8 +1064,8 @@ def plot_efficiency(self):
     print(np.mean(duration_data[0]))
     print(np.mean(duration_data[1]))
 
-    group_A = list(np.array(efficiency_data_all)[np.array(all_conditions) == 'naive'])
-    group_B = list(np.array(efficiency_data_all)[np.array(all_conditions) == 'experienced'])
+    group_A = list(np.array(efficiency_data_all)[np.array(all_conditions) == 'OFn'])
+    group_B = list(np.array(efficiency_data_all)[np.array(all_conditions) == 'ORe'])
     permutation_test(group_A, group_B, iterations = 10000, two_tailed = False)
 
     group_A = list(np.array(duration_data_all)[np.array(all_conditions) == 'food'])
@@ -994,33 +1104,56 @@ def plot_exploration(self):
         sub_experiments, sub_conditions = extract_experiments(experiment, condition)
         # get the number of trials
         number_of_mice = get_number_of_mice(sub_experiments, sub_conditions, self.analysis)
-        mouse_num = 0
         # initialize array to fill in with each mouse's data
         shape = self.analysis[sub_experiments[0]]['obstacle']['shape']
-        exploration = np.zeros((shape[0], shape[1], number_of_mice))
+        exploration = np.zeros((shape[0], shape[1], 1))
+        mouse_exploration = np.zeros((shape[0], shape[1], 1))
         # loop over each experiment and condition
         for e, (experiment, condition) in enumerate(zip(sub_experiments, sub_conditions)):
             # loop over each mouse
             for mouse in self.analysis[experiment][condition]['exploration']:
                 # fill array with each mouse's data
-                exploration[:, :, mouse_num] = self.analysis[experiment][condition]['exploration'][mouse]
-                mouse_num += 1
+                mouse_explored = np.array(self.analysis[experiment][condition]['exploration'][mouse])
+                if mouse_explored.size:
+                    mouse_exploration[:,:,0] = mouse_explored
+                    exploration = np.concatenate((exploration, mouse_exploration), axis = 2)
 
         # average all mice data
         exploration_all = np.mean(exploration, 2)
 
         # make an image out of it
         exploration_image = exploration_all.copy()
-        exploration_image = (exploration_image / np.percentile(exploration_image, 98) * 255)
+        # exploration_image = (exploration_image / np.percentile(exploration_image, 98) * 255)
+        exploration_image = (exploration_image / .00001 * 255)
         exploration_image[exploration_image > 255] = 255
         # median filter
         # exploration_image = scipy.signal.medfilt2d(exploration_image, kernel_size=5)
+
+        # gaussian blur
+        exploration_blur = cv2.GaussianBlur(exploration_image, ksize=(201, 201), sigmaX=15, sigmaY=15)
+
+        # normalize
+        print(np.percentile(exploration_blur, 94))
+        # exploration_blur = (exploration_blur / np.percentile(exploration_blur, 94) * 255)  # 97
+        exploration_blur = (exploration_blur / 80 * 255)  # 97
+        exploration_blur[exploration_blur > 255] = 255
+
+        # change color map
+        exploration_blur = exploration_blur * 170 / 255
+        exploration_blur = cv2.applyColorMap(255 - exploration_blur.astype(np.uint8), cv2.COLORMAP_HOT)
+
+        # make composite image
+        exploration_image = exploration_blur.copy()
+        exploration_image[exploration_all > 0] = exploration_image[exploration_all > 0] * [.8, .8, .8]
+
+
         # present it
-        exploration_image = cv2.cvtColor(255 - exploration_image.astype(np.uint8), cv2.COLOR_GRAY2RGB)
-        # cv2.imshow('heat map', exploration_image)
-        # cv2.waitKey(100)
+        # exploration_image = cv2.cvtColor(255 - exploration_image.astype(np.uint8), cv2.COLOR_GRAY2RGB)
+        cv2.imshow('heat map', exploration_image)
+        cv2.imshow('heat map blur', exploration_blur)
+        cv2.waitKey(100)
         # save results
-        scipy.misc.imsave(os.path.join(self.summary_plots_folder, experiment + '_exploration_' + condition + '.tif'), exploration_image[:,:,::-1])
+        scipy.misc.imsave(os.path.join(self.summary_plots_folder, experiment + '_exploration_' + condition + '.tif'), exploration_image) #[:,:,::-1])
 
         shape = self.analysis[sub_experiments[0]]['obstacle']['shape']
         obstacle_type = self.analysis[sub_experiments[0]]['obstacle']['type']
