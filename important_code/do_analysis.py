@@ -317,6 +317,8 @@ class analyze_data():
                 path = coordinates['center_location'][0][homing_idx] * self.scaling_factor, \
                        coordinates['center_location'][1][homing_idx] * self.scaling_factor
 
+                print(path[0][0], path[1][0])
+
                 # if self.mouse == 'CA7010' and path[1][0] < 40:
                 #     print(path[1][0])
                 #     print(path[0][0])
@@ -325,7 +327,7 @@ class analyze_data():
                 #     print('hi')
 
                 # exclude if starts too far down or is already used
-                if path[1][0] > 35 or combo_paths: #was 40 TEMP
+                if path[1][0] > 35 or combo_paths or s < 150: #was 40 TEMP -- then was 35!!!
                     if combo_paths>0: combo_paths -= 1
                 else:
                    # if next path is continuation of this one, see if it qualifies
@@ -345,7 +347,7 @@ class analyze_data():
 
                     #    test eligibility
                     #    or never approaches y center      or never is above wall on top part of arena
-                    if np.sum(abs(path[1] - 45) < 5) and np.sum((abs(path[0] - 50) < 24.5) * (path[1] < 50)): #27.5?
+                    if np.sum(abs(path[1] - 45) < 5) and np.sum((abs(path[0] - 50) < 24.5) * (path[1] < 50)): #27.5? TEMP -- WAS 24.5
 
                         # get x-position along central wall
                         center_y_idx = np.argmin(abs(path[1] - 45))
@@ -384,6 +386,8 @@ class analyze_data():
                         # neagtive is left, positive is right
                         turn_angle.append(turn * np.sign(-turn_direction))
 
+            print(x_SH)
+
         else: # for U-shaped experiments define homings differently
             position = coordinates['center_location'][0][:stim] * self.scaling_factor, coordinates['center_location'][1][:stim] * self.scaling_factor
             duration_of_homing = 30 # in frames
@@ -406,6 +410,9 @@ class analyze_data():
             else: x_SH.append(50)
 
             print(x_SH)
+
+        if self.mouse == 'CA3380':
+            print('hi')
 
         analysis.analysis[self.experiment][self.condition]['prev homings'][self.mouse].append([x_SH, y_SH, how_long_to_shelter, SH_time, stim_evoked])
         analysis.analysis[self.experiment][self.condition]['prev movements'][self.mouse].append([x_start, y_start, angle_start, turn_angle, x_SH])
@@ -645,6 +652,12 @@ class analyze_data():
         # get where to evaluate trajectory
         if 'void' in self.experiment: y_eval_point = 35  #compensate for greater girthiness of the void
         else: y_eval_point = 40
+
+        # '''     TEMP - y-eval is 10cm from start point      '''
+        # dist_from_start = np.sqrt( (y_pos - y_pos[0])**2 + (x_pos - x_pos[0])**2)
+        # y_eval_idx = np.argmin(abs(dist_from_start - 5))
+        # y_eval_point = y_pos[y_eval_idx]
+
 
         if 'U shaped' in self.experiment: y_wall_point = 55 # when it's past the cup
         else: y_wall_point = 45

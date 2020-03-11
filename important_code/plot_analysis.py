@@ -24,9 +24,6 @@ def plot_traversals(self):
     types = ['spontaneous'] #, 'evoked']
     fast_color = np.array([.5, 1, .5])
     slow_color = np.array([1, .9, .9])
-    edge_vector_color = np.array([0, .7, .99])**5
-    homing_vector_color = np.array([.95, 0, .85])**5
-
     edge_vector_color = np.array([1, .95, .85])
     homing_vector_color = np.array([.725, .725, .725])
     non_escape_color = np.array([0,0,0])
@@ -198,9 +195,9 @@ def plot_escape_paths(self):
     non_escape_color = np.array([0,0,0])
 
     fps = 30
-    escape_duration = 6 #6 #12 # #12 #6 #9 for food # 18 for U
+    escape_duration = 12 #6 #12 # #12 #6 #9 for food # 18 for U
     min_distance_to_shelter = 30
-    HV_cutoff = -10 #0.681  #.75 #.7
+    HV_cutoff = 0.681  #.75 #.7
 
     # initialize all data for stats
     all_data = [[], [], [], []]
@@ -240,6 +237,11 @@ def plot_escape_paths(self):
                 show_escape_paths(HV_cutoff, arena, arena_color, arena_reference, c, condition, edge_vector_color, escape_duration, experiment, fps,
                                   homing_vector_color, min_distance_to_shelter, mouse, non_escape_color, scaling_factor, self, shelter_location, strategies,
                                   determine_strategy = ('dark' in experiment and condition=='obstacle'))
+
+
+
+
+
         # save image
         # scipy.misc.imsave(os.path.join(self.summary_plots_folder, 'Escape paths - ' + self.labels[c] + '.tif'), arena_color[:,:,::-1])
         imageio.imwrite(os.path.join(self.summary_plots_folder, 'Escape paths - ' + self.labels[c] + '.tif'), arena_color[:,:,::-1])
@@ -247,7 +249,7 @@ def plot_escape_paths(self):
         fig = plot_strategies(strategies, homing_vector_color, non_escape_color, edge_vector_color)
         fig.savefig(os.path.join(self.summary_plots_folder, 'Escape categories - ' + self.labels[c] + '.tif'), format='tif', bbox_inches = 'tight', pad_inches = 0)
         fig.savefig(os.path.join(self.summary_plots_folder, 'Escape categories - ' + self.labels[c] + '.eps'), format='eps', bbox_inches = 'tight', pad_inches = 0)
-    # plt.show()
+    plt.show()
 
 # strategies = np.array([4,5,0])
 # fig = plot_strategies(strategies, homing_vector_color, non_escape_color, edge_vector_color)
@@ -259,19 +261,27 @@ def plot_escape_paths(self):
 # group_B = [[1,0,0],[0,0,0,0],[0,0,0],[1,0,0],[0,0,0]]
 # permutation_test(group_B, group_A, iterations = 10000, two_tailed = False)
 
-# obstacle = [[0],[1],[0,0,0],[0,0],[0,1],[1,0],[0,0,0], [1]]
+obstacle = [[0],[1],[0,0,0],[0,0],[0,1],[1],[0,0,0], [1]]
 # obstacle_exp = [[0,1],[0,0,0,0,1],[0,1],[0]]
-# open_field = [[1,0,0],[0,0,0,0],[0,0,0],[1,0,0],[0,0,0],[0,0,0]]
+open_field = [[1,0,0,0,0],[0,0,0,0,0],[0,0,0,0],[1,0,0,0,0,0],[0,0,0,0,0,0],[0,0,0,0,0,0,0,0]]
 # U_shaped = [[0,1],[1,1], [1,1], [0,0,1], [0,0,0], [0], [1], [0], [0,1], [0,1,0,0], [0,0,0]]
 # permutation_test(open_field, obstacle, iterations = 10000, two_tailed = False)
 
+
+# do same edgy homing then stop to both
+obstacle = [[0],[1],[0,0,0],[0,0],[0,1],[1],[0,0,0], [1], [1], [0,0,0]]
+open_field = [[1],[0,0,0],[0,0,0],[1,0,0],[0,0,0],[0,0,1]] #stop at 3 trials
+
+# do same edgy homing then stop to both --> exclude non escapes
+obstacle = [[0],[1],[0,0,0],[0],[0,1],[1],[0,0,0], [1], [1], [0,0,0]]
+open_field = [[1],[0,0],[0,0,0],[1,0,0],[0,0,0],[0,1]] #stop at 3 trials
 
 
 
 def plot_edginess(self):
     # initialize parameters
     fps = 30
-    escape_duration = 6 #9 #6
+    escape_duration = 12 #9 #6
     HV_cutoff = .681 #.7#5 #.7 #.75 #
     ETD = 10#8
     traj_loc = 40
@@ -285,7 +295,7 @@ def plot_edginess(self):
     colors = [np.array([.7, 0, .3]), np.array([0, .8, .5])]
     colors = [np.array([.3,.3,.3]), np.array([1, .2, 0]), np.array([0, .8, .4]), np.array([0, .7, .9])]
     colors = [np.array([.3, .3, .3]), np.array([1, .2, 0]), np.array([.7, 0, .7]), np.array([0, .7, .9])]
-    colors = [np.array([0, 0, 0]), np.array([0, 0, 0]),np.array([0, 0, 0]), np.array([0, 0, 0])]
+    # colors = [np.array([0, 0, 0]), np.array([0, 0, 0]),np.array([0, 0, 0]), np.array([0, 0, 0])]
     offset = [0,.2, .2, 0]
 
     # initialize figures
@@ -298,7 +308,7 @@ def plot_edginess(self):
 
     delta_ICs, delta_x_end = [], []
 
-    repetitions = 15
+    repetitions = 1
     for rand_select in range(repetitions):
         # loop over experiments and conditions
         for c, (experiment, condition) in enumerate(zip(self.experiments, self.conditions)):
@@ -323,6 +333,7 @@ def plot_edginess(self):
                     if not self.analysis_options['control'] and mouse=='control': continue
                     # loop over each trial
                     prev_homings = []
+                    x_edges_used = []
                     t = 0
                     for trial in range(len(self.analysis[experiment][condition]['end time'][mouse])):
                         trial_num += 1
@@ -337,11 +348,15 @@ def plot_edginess(self):
                             # if condition == 'obstacle' and c == 2 and trial: continue
 
                             if t>2: continue
+                            # if not c and trial: continue
+                            # if c and (not trial==2 and not trial==3): continue
 
                         if trial and 'quick' in experiment: continue
                         elif 'Square' in experiment:
                             # only three trials
                             if t > 2: continue
+
+
                             # y_idx = self.analysis[experiment][condition]['path'][mouse][trial][1]
                             # x_idx = self.analysis[experiment][condition]['path'][mouse][trial][0]
                             # # get where the mouse is in the center
@@ -367,6 +382,33 @@ def plot_edginess(self):
                             mouse_data[3].append(0)
                             continue
 
+                        '''     check for previous edgy homings         '''
+
+                        if 'dark' in experiment: # or True:
+                            num_prev_edge_vectors, x_edge = get_num_edge_vectors(self, experiment, condition, mouse, trial)
+                            # if num_prev_edge_vectors < 2 and c==2:  print('prev edgy homing'); continue
+                            # if num_prev_edge_vectors >= 2 and c==1:  print('prev edgy homing'); continue
+                            if num_prev_edge_vectors >= 2:  print('prev edgy homing'); continue
+
+                            # if x_edge in x_edges_used: print('prev edgy escape'); continue
+
+                            print('-----------' + mouse + '--------------')
+
+                            if self.analysis[experiment][condition]['edginess'][mouse][trial] <= HV_cutoff:
+                                print('       HV        ')
+                            else:
+                                print('       EDGY        ')
+                                # edgy trial has occurred
+                                print('EDGY TRIAL ' + str(trial))
+                                x_edges_used.append(x_edge)
+
+                            # select only *with* prev homings
+                            # if not num_prev_edge_vectors:
+                            #     if not x_edge in x_edges_used:
+                            #         if self.analysis[experiment][condition]['edginess'][mouse][trial] > HV_cutoff:
+                            #             x_edges_used.append(x_edge)
+                            #         continue
+
                         # add data
                         edginess[trial_num] = self.analysis[experiment][condition]['edginess'][mouse][trial]
                         if 'Square' in experiment and edginess[trial_num] <=-.4:
@@ -380,15 +422,9 @@ def plot_edginess(self):
                             # get time in center
                             time_in_center[trial_num] = self.analysis[experiment][condition]['in center'][mouse][trial] / 30
 
-                            # if edginess[trial_num] > HV_cutoff:
-                            #     print(trial)
-                            #     print(dist_to_SH[trial_num])
-                            # if edginess[trial_num] > 0.8 and prev_edginess[trial_num] < .6:
-                            #     print('----!!!!----')
-                            #     print(trial)
-                            #     print( edginess[trial_num] )
-                            #     print( prev_edginess[trial_num] )
-                            #     print('----!!!!----')
+                            # if prev_edginess[trial_num] >= .68 and c:
+                            #     edginess[trial_num] = np.nan
+                            #     continue
 
 
                         # get time since obstacle removal?
@@ -419,139 +455,139 @@ def plot_edginess(self):
 
             dist_data_EV_other_all = np.append(dist_data_EV_other_all, dist_to_other_SH[edginess > HV_cutoff])
 
-        print(t_total)
+            print(t_total)
 
-        '''     plot edginess by condition     '''
-        # get the data
-        # data = abs(edginess)
-        data = edginess
+            '''     plot edginess by condition     '''
+            # get the data
+            # data = abs(edginess)
+            data = edginess
 
-        plot_data = data[~np.isnan(data)]
-        # plot each trial
-        scatter_axis = scatter_the_axis(c, plot_data)
-        ax.scatter(scatter_axis[plot_data>HV_cutoff], plot_data[plot_data>HV_cutoff], color=edge_vector_color[::-1], s=25, zorder = 99)
-        ax.scatter(scatter_axis[plot_data<=HV_cutoff], plot_data[plot_data<=HV_cutoff], color=homing_vector_color[::-1], s=25, zorder = 99)
-        #do kde
-        try:
-            kde = fit_kde(plot_data, bw=.04)  # .04
-            if 'Square' in experiment:
-                plot_kde(ax, kde, plot_data, z=3*c + .3, vertical=True, normto=1, color=[.5,.5,.5], violin=False, clip=False, cutoff = HV_cutoff, cutoff_colors = [homing_vector_color[::-1], edge_vector_color[::-1]])
-            else:
-                plot_kde(ax, kde, plot_data, z=3*c + .3, vertical=True, normto=1.3, color=[.5,.5,.5], violin=False, clip=True, cutoff = HV_cutoff, cutoff_colors = [homing_vector_color[::-1], edge_vector_color[::-1]])
-        except: pass
+            plot_data = data[~np.isnan(data)]
+            # plot each trial
+            scatter_axis = scatter_the_axis(c, plot_data)
+            ax.scatter(scatter_axis[plot_data>HV_cutoff], plot_data[plot_data>HV_cutoff], color=edge_vector_color[::-1], s=25, zorder = 99)
+            ax.scatter(scatter_axis[plot_data<=HV_cutoff], plot_data[plot_data<=HV_cutoff], color=homing_vector_color[::-1], s=25, zorder = 99)
+            #do kde
+            try:
+                kde = fit_kde(plot_data, bw=.04)  # .04
+                if 'Square' in experiment:
+                    plot_kde(ax, kde, plot_data, z=3*c + .3, vertical=True, normto=1, color=[.5,.5,.5], violin=False, clip=False, cutoff = HV_cutoff, cutoff_colors = [homing_vector_color[::-1], edge_vector_color[::-1]])
+                else:
+                    plot_kde(ax, kde, plot_data, z=3*c + .3, vertical=True, normto=1.3, color=[.5,.5,.5], violin=False, clip=True, cutoff = HV_cutoff, cutoff_colors = [homing_vector_color[::-1], edge_vector_color[::-1]])
+            except: pass
 
-        # plot the polar plot or initial trajectories
-        plt.figure(fig4.number)
-        ax4 = plt.subplot(1,4,4 - c, polar=True)
-        plt.axis('off')
+            # plot the polar plot or initial trajectories
+            plt.figure(fig4.number)
+            ax4 = plt.subplot(1,4,4 - c, polar=True)
+            plt.axis('off')
 
-        mean_value = np.mean(plot_data)
-        value_color = mean_value * edge_vector_color[::-1] + (1 - mean_value) * homing_vector_color[::-1]
+            mean_value = np.mean(plot_data)
+            value_color = mean_value * edge_vector_color[::-1] + (1 - mean_value) * homing_vector_color[::-1]
 
-        # ax4.plot([0, mean_value + 3 * np.pi / 2], [0, 1.3], color=value_color, alpha=1, linewidth=1)
-        ax4.arrow(mean_value + 3 * np.pi / 2, 0, 0, 2, color=value_color, alpha=1, width = 0.05, linewidth=2)
-        ax4.plot([0, 0 + 3 * np.pi / 2], [0, 2.5], color=[.5,.5,.5], alpha=1, linewidth=1, linestyle = '--')
-        ax4.plot([0, 1 + 3 * np.pi / 2], [0, 2.5], color=[.5,.5,.5], alpha=1, linewidth=1, linestyle = '--')
+            # ax4.plot([0, mean_value + 3 * np.pi / 2], [0, 1.3], color=value_color, alpha=1, linewidth=1)
+            ax4.arrow(mean_value + 3 * np.pi / 2, 0, 0, 2, color=value_color, alpha=1, width = 0.05, linewidth=2)
+            ax4.plot([0, 0 + 3 * np.pi / 2], [0, 2.5], color=[.5,.5,.5], alpha=1, linewidth=1, linestyle = '--')
+            ax4.plot([0, 1 + 3 * np.pi / 2], [0, 2.5], color=[.5,.5,.5], alpha=1, linewidth=1, linestyle = '--')
 
-        for point in plot_data:
-            if point > HV_cutoff:
-                ax4.plot([0, point + 3 * np.pi/2], [0, 1.5], color=edge_vector_color[::-1], alpha = .8, linewidth=1)
-            else:
-                ax4.plot([0, point + 3 * np.pi / 2], [0, 1.5], color=homing_vector_color[::-1], alpha=.8, linewidth=1)
+            for point in plot_data:
+                if point > HV_cutoff:
+                    ax4.plot([0, point + 3 * np.pi/2], [0, 1.5], color=edge_vector_color[::-1], alpha = .8, linewidth=1)
+                else:
+                    ax4.plot([0, point + 3 * np.pi / 2], [0, 1.5], color=homing_vector_color[::-1], alpha=.8, linewidth=1)
 
-        # compare all conditions on one plot
-        # if c!= 1:
-        #     plt.figure(fig5.number)
-        #     ax5 = plt.subplot(111, polar=True)
-        #     plt.axis('off')
-        #     ax5.plot([0, np.median(plot_data) + 3 * np.pi/2], [0, 1.475 + offset[c]], color=colors[c], alpha = 1, linewidth=4)
-        #     Q1 = np.percentile(plot_data, 25)
-        #     Q3 = np.percentile(plot_data, 75)
-        #
-        #     ax5.bar((Q3 + Q1)/2 + 3 * np.pi/2, 1.5 + offset[c], width=Q3-Q1, bottom=0.0, color=colors[c], alpha=0.35)
-        '''         plot the correaltion between dist to ICs and dist to x final        '''
-        plt.ion()
+            # compare all conditions on one plot
+            # if c!= 1:
+            #     plt.figure(fig5.number)
+            #     ax5 = plt.subplot(111, polar=True)
+            #     plt.axis('off')
+            #     ax5.plot([0, np.median(plot_data) + 3 * np.pi/2], [0, 1.475 + offset[c]], color=colors[c], alpha = 1, linewidth=4)
+            #     Q1 = np.percentile(plot_data, 25)
+            #     Q3 = np.percentile(plot_data, 75)
+            #
+            #     ax5.bar((Q3 + Q1)/2 + 3 * np.pi/2, 1.5 + offset[c], width=Q3-Q1, bottom=0.0, color=colors[c], alpha=0.35)
+            '''         plot the correaltion between dist to ICs and dist to x final        '''
+            # plt.ion()
 
-        fig6, ax6 = plt.subplots(figsize=(9, 9))
-        # ax6.set_xlim([-2, 59])
-        # ax6.set_ylim([-2, 59])
-        # ax6.set_xticks(np.arange(0, 60, 10))
-        # ax6.set_xticks(np.arange(0, 60, 10))
-
-        x_data = list(flatten(delta_ICs))
-        y_data = list(flatten(delta_x_end))
-
-        ax6.scatter(x_data, y_data, color=colors[c], s=60, alpha=1, edgecolors=colors[c] / 2, linewidth=1)
-        # do correlation
-        r, p = scipy.stats.pearsonr(x_data, y_data)
-        print(r, p)
-        # do linear regression
-        plot_data_corr, prediction = do_linear_regression(np.array(y_data), np.array(x_data))
-        # plot linear regresssion
-        ax6.plot(plot_data_corr, prediction['Pred'].values, color=colors[c], linewidth=1, linestyle='--', alpha=.7)  # color=[.0, .0, .0]
-        ax6.fill_between(plot_data_corr, prediction['lower'].values, prediction['upper'].values, color=colors[c], alpha=.075)  # color=[.2, .2, .2]
-
-
-        plt.draw()
-        plt.pause(0.01)
-
-        fig6.savefig(os.path.join(self.summary_plots_folder, 'Correlation to ICs.tif'), format='tif', bbox_inches='tight', pad_inches=0)
-        fig6.savefig(os.path.join(self.summary_plots_folder, 'Correlation to ICs.eps'), format='eps', bbox_inches='tight', pad_inches=0)
+            # fig6, ax6 = plt.subplots(figsize=(9, 9))
+            # # ax6.set_xlim([-2, 59])
+            # # ax6.set_ylim([-2, 59])
+            # # ax6.set_xticks(np.arange(0, 60, 10))
+            # # ax6.set_xticks(np.arange(0, 60, 10))
+            #
+            # x_data = list(flatten(delta_ICs))
+            # y_data = list(flatten(delta_x_end))
+            #
+            # ax6.scatter(x_data, y_data, color=colors[c], s=60, alpha=1, edgecolors=colors[c] / 2, linewidth=1)
+            # # do correlation
+            # r, p = scipy.stats.pearsonr(x_data, y_data)
+            # print(r, p)
+            # # do linear regression
+            # plot_data_corr, prediction = do_linear_regression(np.array(y_data), np.array(x_data))
+            # # plot linear regresssion
+            # ax6.plot(plot_data_corr, prediction['Pred'].values, color=colors[c], linewidth=1, linestyle='--', alpha=.7)  # color=[.0, .0, .0]
+            # ax6.fill_between(plot_data_corr, prediction['lower'].values, prediction['upper'].values, color=colors[c], alpha=.075)  # color=[.2, .2, .2]
 
 
+            # plt.draw()
+            # plt.pause(0.01)
+            #
+            # fig6.savefig(os.path.join(self.summary_plots_folder, 'Correlation to ICs.tif'), format='tif', bbox_inches='tight', pad_inches=0)
+            # fig6.savefig(os.path.join(self.summary_plots_folder, 'Correlation to ICs.eps'), format='eps', bbox_inches='tight', pad_inches=0)
 
-        if False or True:
-            '''     plot the correlation    '''
-            # do both prev homings and time in center # np.array(time_since_down) # 'Time since removal'
-            for plot_data_corr, fig_corr, ax_corr, data_label in zip([prev_edginess, time_in_center], [fig2, fig3], [ax2, ax3], ['Prior homings','Exploration']): #
-                plot_data_corr = plot_data_corr[~np.isnan(data)]
-                # plot data
-                ax_corr.scatter(plot_data_corr, plot_data, color=colors[c], s=60, alpha=1, edgecolors=colors[c]/2, linewidth=1) #color=[.5, .5, .5] #edgecolors=[.2, .2, .2]
-                # do correlation
-                r, p = scipy.stats.pearsonr(plot_data_corr, plot_data)
-                print(r, p)
-                # do linear regression
-                plot_data_corr, prediction = do_linear_regression(plot_data, plot_data_corr)
-                # plot linear regresssion
-                ax_corr.plot(plot_data_corr, prediction['Pred'].values, color=colors[c], linewidth=1, linestyle='--', alpha=.7) #color=[.0, .0, .0]
-                ax_corr.fill_between(plot_data_corr, prediction['lower'].values, prediction['upper'].values, color=colors[c], alpha=.075) #color=[.2, .2, .2]
-                fig_corr.savefig(os.path.join(self.summary_plots_folder, 'Edginess by ' + data_label + ' - ' + self.labels[c] + '.tif'), format='tif')
-                fig_corr.savefig(os.path.join(self.summary_plots_folder, 'Edginess by ' + data_label + ' - ' + self.labels[c] + '.eps'), format='eps')
 
-            # test correlation and stats thru permutation test
-            # data_x = list(np.array(all_data[2])[np.array(all_conditions) == c])
-            # data_y = list(np.array(all_data[1])[np.array(all_conditions) == c])
-            # permutation_correlation(data_x, data_y, iterations=10000, two_tailed=False, pool_all = True)
+
+            if False or True:
+                '''     plot the correlation    '''
+                # do both prev homings and time in center # np.array(time_since_down) # 'Time since removal'
+                for plot_data_corr, fig_corr, ax_corr, data_label in zip([prev_edginess, time_in_center], [fig2, fig3], [ax2, ax3], ['Prior homings','Exploration']): #
+                    plot_data_corr = plot_data_corr[~np.isnan(data)]
+                    # plot data
+                    ax_corr.scatter(plot_data_corr, plot_data, color=colors[c], s=60, alpha=1, edgecolors=colors[c]/2, linewidth=1) #color=[.5, .5, .5] #edgecolors=[.2, .2, .2]
+                    # do correlation
+                    r, p = scipy.stats.pearsonr(plot_data_corr, plot_data)
+                    print(r, p)
+                    # do linear regression
+                    plot_data_corr, prediction = do_linear_regression(plot_data, plot_data_corr)
+                    # plot linear regresssion
+                    ax_corr.plot(plot_data_corr, prediction['Pred'].values, color=colors[c], linewidth=1, linestyle='--', alpha=.7) #color=[.0, .0, .0]
+                    ax_corr.fill_between(plot_data_corr, prediction['lower'].values, prediction['upper'].values, color=colors[c], alpha=.075) #color=[.2, .2, .2]
+                    fig_corr.savefig(os.path.join(self.summary_plots_folder, 'Edginess by ' + data_label + ' - ' + self.labels[c] + '.tif'), format='tif')
+                    fig_corr.savefig(os.path.join(self.summary_plots_folder, 'Edginess by ' + data_label + ' - ' + self.labels[c] + '.eps'), format='eps')
+
+                # test correlation and stats thru permutation test
+                # data_x = list(np.array(all_data[2])[np.array(all_conditions) == c])
+                # data_y = list(np.array(all_data[1])[np.array(all_conditions) == c])
+                # permutation_correlation(data_x, data_y, iterations=10000, two_tailed=False, pool_all = True)
 
     '''         plot the dist to prev edge vectors      '''
-    dist_data_EV = dist_to_SH[data>HV_cutoff]
-    dist_data_EV = dist_data_EV[~np.isnan(dist_data_EV)]
-
-    # dist_data_EV_other = dist_to_other_SH[data>HV_cutoff]
-    dist_data_EV_other_all = dist_data_EV_other_all[~np.isnan(dist_data_EV_other_all)]
-
-    # plt.ion()
-
-    fig6, ax6 = plt.subplots(figsize=(9, 9))
-
-    bin_size = 5
-    bins = np.arange(0,40,bin_size)
-    widths = np.diff(bins)
-    hist_same_side, bins = np.histogram(dist_data_EV, bins=bins, normed=True)
-    hist_other_side, bins = np.histogram(dist_data_EV_other_all, bins=bins, normed=True)
-
-    plt.bar(bins[:-1] + bin_size / 2, hist_same_side * bin_size, widths, facecolor = edge_vector_color[::-1], alpha = .8)
-    plt.bar(bins[:-1] + bin_size / 2, hist_other_side * bin_size, widths, facecolor= homing_vector_color[::-1], alpha= .35)
-
-    plt.xlim([-5, 35])
-    plt.ylim([0, .36])
-    plt.yticks([0, .1, .2, .3])
-
-    permutation_test(list(dist_data_EV), list(dist_data_EV_other_all), iterations=10000, two_tailed=True)
+    # dist_data_EV = dist_to_SH[data>HV_cutoff]
+    # dist_data_EV = dist_data_EV[~np.isnan(dist_data_EV)]
+    #
+    # # dist_data_EV_other = dist_to_other_SH[data>HV_cutoff]
+    # dist_data_EV_other_all = dist_data_EV_other_all[~np.isnan(dist_data_EV_other_all)]
+    #
+    # # plt.ion()
+    #
+    # fig6, ax6 = plt.subplots(figsize=(9, 9))
+    #
+    # bin_size = 5
+    # bins = np.arange(0,40,bin_size)
+    # widths = np.diff(bins)
+    # hist_same_side, bins = np.histogram(dist_data_EV, bins=bins, normed=True)
+    # hist_other_side, bins = np.histogram(dist_data_EV_other_all, bins=bins, normed=True)
+    #
+    # plt.bar(bins[:-1] + bin_size / 2, hist_same_side * bin_size, widths, facecolor = edge_vector_color[::-1], alpha = .8)
+    # plt.bar(bins[:-1] + bin_size / 2, hist_other_side * bin_size, widths, facecolor= homing_vector_color[::-1], alpha= .35)
+    #
+    # plt.xlim([-5, 35])
+    # plt.ylim([0, .36])
+    # plt.yticks([0, .1, .2, .3])
+    #
+    # permutation_test(list(dist_data_EV), list(dist_data_EV_other_all), iterations=10000, two_tailed=True)
 
     # save the plot
-    fig6.savefig(os.path.join(self.summary_plots_folder, 'Generalizability.tif'), format='tif', bbox_inches='tight', pad_inches=0)
-    fig6.savefig(os.path.join(self.summary_plots_folder, 'Generalizability.eps'), format='eps', bbox_inches='tight', pad_inches=0)
+    # fig6.savefig(os.path.join(self.summary_plots_folder, 'Generalizability.tif'), format='tif', bbox_inches='tight', pad_inches=0)
+    # fig6.savefig(os.path.join(self.summary_plots_folder, 'Generalizability.eps'), format='eps', bbox_inches='tight', pad_inches=0)
 
     # save the plot
     fig.savefig(os.path.join(self.summary_plots_folder, 'Edginess comparison.tif'), format='tif', bbox_inches='tight', pad_inches=0)
@@ -563,15 +599,14 @@ def plot_edginess(self):
     # fig5.savefig(os.path.join(self.summary_plots_folder, 'Angle dist comparison.tif'), format='tif', bbox_inches='tight', pad_inches=0)
     # fig5.savefig(os.path.join(self.summary_plots_folder, 'Angle dist comparison.eps'), format='eps', bbox_inches='tight', pad_inches=0)
 
-
     plt.show()
     time_to_shelter_all = np.concatenate(list(flatten(time_to_shelter_all))).astype(float)
     np.percentile(time_to_shelter_all, 25)
     np.percentile(time_to_shelter_all, 75)
 
     group_A = list(np.array(all_data[0])[np.array(all_conditions) == 0])
-    group_B = list(np.array(all_data[0])[np.array(all_conditions) == 2])
-    permutation_test(group_A, group_B, iterations = 10000, two_tailed = False)
+    group_B = list(np.array(all_data[0])[np.array(all_conditions) == 1])
+    permutation_test(group_A, group_B, iterations = 10000, two_tailed = True)
 
     group_A = list(np.array(all_data[3])[np.array(all_conditions) == 0])
     group_B = list(np.array(all_data[3])[np.array(all_conditions) == 2])
@@ -636,16 +671,28 @@ def plot_metrics_by_strategy(self):
                     # is it a homing vector
                     strategy_code = 0
                     # TEMPORARY COMMENTING
-                    # if not edgy_escape:
-                    #     if self.analysis[experiment][condition]['edginess'][mouse][trial] < HV_cutoff: strategy_code = 0 # homing vector
-                    #     else: continue
-                    # else:
-                    #     # get the strategy used -- NUMBER OF PREVIOUS EDGE VECTOR HOMINGS
-                    #     # how many prev homings to that edge: if 0, then map-based, if >1, then PL
-                    #     num_edge_vectors, x_edge = get_num_edge_vectors(self, experiment, condition, mouse, trial)
-                    #     if num_edge_vectors >= 3: strategy_code = 1 # path learning
-                    #     elif num_edge_vectors == 0: strategy_code = 2 # map-based
-                    #     else: continue
+                    if not edgy_escape:
+                        if self.analysis[experiment][condition]['edginess'][mouse][trial] < HV_cutoff: strategy_code = 0 # homing vector
+                        else: continue
+                    else:
+                        # get the strategy used -- NUMBER OF PREVIOUS EDGE VECTOR HOMINGS
+                        time_to_shelter, SR = get_prev_edginess(ETD, condition, experiment, mouse, prev_edginess, [], [],
+                                                                scaling_factor, self, traj_loc, trial, trial_num, edginess, [], [])
+
+                        if prev_edginess[trial_num] >= .68: strategy_code = 1 # path learning
+                        elif prev_edginess[trial_num] < .5: strategy_code = 2 # map-based
+                        else: continue
+
+
+                        # how many prev homings to that edge: if 0, then map-based, if >1, then PL
+                        # num_edge_vectors, x_edge = get_num_edge_vectors(self, experiment, condition, mouse, trial)
+                        # if num_edge_vectors >= 2:
+                        #     strategy_code = 1 # path learning
+                        #     print('PATH LEARNING -- ' + mouse + ' - trial ' + str(trial))
+                        # elif num_edge_vectors <= 1:
+                        #     strategy_code = 2 # map-based
+                        #     print('MAP BASED -- ' + mouse + ' - trial ' + str(trial))
+                        # else: continue
 
 
                     strategy[trial_num] = strategy_code
@@ -704,7 +751,7 @@ def plot_metrics_by_strategy(self):
             stats_data = [[], [], []]
 
             # go thru each strategy
-            for s in [0]: #,1,2]:
+            for s in [0,1,2]:
                 # format data
                 plot_data = y_data[x_data==s]
                 median = np.percentile(plot_data, 50);
@@ -740,10 +787,10 @@ def plot_metrics_by_strategy(self):
                     stats_data[s].append( list(plot_data[mouse_id_stats==m]) )
 
             print(metric)
-            for ss in [[0,1], [0,2], [1,2]]:
-                group_A = stats_data[ss[0]]
-                group_B = stats_data[ss[1]]
-                permutation_test(group_A, group_B, iterations=10000, two_tailed=True)
+            # for ss in [[0,1], [0,2], [1,2]]:
+            #     group_A = stats_data[ss[0]]
+            #     group_B = stats_data[ss[1]]
+            #     permutation_test(group_A, group_B, iterations=10000, two_tailed=True)
 
             # save figure
             fig.savefig(os.path.join(self.summary_plots_folder, metric + ' - ' + self.labels[c] + '.tif'), format='tif', bbox_inches='tight', pad_inches=0)
@@ -800,49 +847,100 @@ def plot_prediction(self):
                     edginess[trial_num] = abs(self.analysis[experiment][condition]['edginess'][mouse][trial])
                     # get previous edginess
                     time_to_shelter, SR = get_prev_edginess(ETD, condition, experiment, mouse, prev_edginess, dist_to_SH, dist_to_other_SH, scaling_factor, self, traj_loc, trial, trial_num, edginess, [], [])
+                    _, _, prev_edginess_all, elig_idx = get_all_prev_edginess(ETD, condition, experiment, mouse, prev_edginess, dist_to_SH, dist_to_other_SH, scaling_factor, self, traj_loc, trial, trial_num, edginess, [], [])
+                    # prev_edginess[trial_num] = np.mean(self.analysis[experiment][condition]['prev movements'][mouse][trial][3][-ETD:]) #TEMP replace prev edginess w mean angle turned
+
+
+                    elig_idx = np.ones_like(elig_idx).astype(bool)
+
+                    x_edge = self.analysis[experiment][condition]['x edge'][mouse][trial]
+                    if x_edge==25: x_edge = 0
+                    else: x_edge = 100
+                    x_edge = 0
+
                     # get the angle turned during the escape
-                    angle_turned[trial_num] = self.analysis[experiment][condition]['movement'][mouse][trial][2] #turn angle
-                    # angle_turned[trial_num] = self.analysis[experiment][condition]['x escape'][mouse][trial] # X_SH TEMP
+                    # angle_turned[trial_num] = self.analysis[experiment][condition]['movement'][mouse][trial][2] #turn angle
+                    angle_turned[trial_num] = abs(self.analysis[experiment][condition]['x escape'][mouse][trial] - x_edge) # X_SH TEMP
+                    # angle_turned[trial_num] = np.mean(prev_edginess_all[elig_idx]) #TEMP
+
+
                     # get the angle turned, delta x, delta y, and delta phi of previous homings
                     # x_start, y_start, angle_start, turn_angle
                     bout_start_angle = self.analysis[experiment][condition]['movement'][mouse][trial][1]
                     bout_start_position  = self.analysis[experiment][condition]['movement'][mouse][trial][0]
+                    start_time = self.analysis[experiment][condition]['start time'][mouse][trial]
 
-                    # pos control: insert informative points
-                    #     self.analysis[experiment][condition]['prev movements'][mouse][trial][0][k] = bout_start_position[0]
-                    #     self.analysis[experiment][condition]['prev movements'][mouse][trial][1][k] = bout_start_position[1]
-                    #     self.analysis[experiment][condition]['prev movements'][mouse][trial][2][k] = bout_start_angle
-                    #     self.analysis[experiment][condition]['prev movements'][mouse][trial][3][k] = angle_turned[trial_num]
 
-                    prev_movement_and_ICs[0].append([x - bout_start_position[0] for x in self.analysis[experiment][condition]['prev movements'][mouse][trial][0]])
-                    prev_movement_and_ICs[1].append([y - bout_start_position[1] for y in self.analysis[experiment][condition]['prev movements'][mouse][trial][1]])
-                    prev_movement_and_ICs[2].append([abs(sa - bout_start_angle) for sa in self.analysis[experiment][condition]['prev movements'][mouse][trial][2]])
-                    prev_movement_and_ICs[3].append(self.analysis[experiment][condition]['prev movements'][mouse][trial][3]) # turn angle
-                    # prev_movement_and_ICs[3].append(self.analysis[experiment][condition]['prev movements'][mouse][trial][4]) # X_SH movement TEMP
+                    # get initial conditions and endpoint quantities
+                    IC_x = np.array(self.analysis[experiment][condition]['prev movements'][mouse][trial][0][-ETD:])
+                    IC_y = np.array(self.analysis[experiment][condition]['prev movements'][mouse][trial][1][-ETD:])
+                    IC_angle = np.array(self.analysis[experiment][condition]['prev movements'][mouse][trial][2][-ETD:])
+                    IC_time = np.array(self.analysis[experiment][condition]['prev homings'][mouse][trial][3][-ETD:])
 
-                    data_y_for_prev_movement[0].append(list(np.ones(len(self.analysis[experiment][condition]['prev movements'][mouse][trial][0])) * edginess[trial_num]))
-                    data_y_for_prev_movement[1].append(list(np.ones(len(self.analysis[experiment][condition]['prev movements'][mouse][trial][0])) * angle_turned[trial_num]))
+                    end_x = abs(np.array(self.analysis[experiment][condition]['prev movements'][mouse][trial][4][-ETD:]) - x_edge)
+                    turn_angles = self.analysis[experiment][condition]['prev movements'][mouse][trial][3][-ETD:]
+
+                    # get sorting of output differences
+                    # delta_turn = abs(turn_angles - angle_turned[trial_num])
+                    # delta_turn[delta_turn > 180] = 360 - delta_turn[delta_turn > 180]
+
+                    delta_turn = abs(end_x - angle_turned[trial_num])
+                    diff_idx = np.argsort(np.argsort(delta_turn))
+
+
+
+                    # calculate difference in ICs
+                    delta_x = abs( np.array(IC_x[elig_idx] - bout_start_position[0]) )
+                    delta_y = abs( np.array(IC_y[elig_idx] - bout_start_position[1]) )
+                    delta_angle = abs( np.array(IC_angle[elig_idx] - bout_start_angle) )
+                    delta_angle[delta_angle > 180] = 360 - delta_angle[delta_angle > 180]
+                    delta_time = start_time - np.array(IC_time[elig_idx])
+
+                    prev_movement_and_ICs[0].append(list(np.sort(delta_x)[diff_idx]))
+                    prev_movement_and_ICs[1].append(list(np.sort(delta_y)[diff_idx]))
+                    prev_movement_and_ICs[2].append(list(np.sort(delta_angle)[diff_idx]))
+                    prev_movement_and_ICs[4].append(list(np.sort(delta_time)[diff_idx]))
+
+
+                    # prev_movement_and_ICs[3].append(turn_angles) # turn angle
+                    prev_movement_and_ICs[3].append(list(end_x[elig_idx])) # X_SH movement TEMP
+                    # prev_movement_and_ICs[3].append(list(prev_edginess_all[elig_idx]))  # prev edginess TEMP
+
+
+
+
+                    data_y_for_prev_movement[0].append(list(np.ones(len(IC_x[elig_idx])) * edginess[trial_num]))
+                    data_y_for_prev_movement[1].append(list(np.ones(len(IC_x[elig_idx])) * angle_turned[trial_num]))
 
 
         # format the prev movement and ICs data
-        delta_x = list(flatten(prev_movement_and_ICs[0]))
-        delta_y = list(flatten(prev_movement_and_ICs[1]))
-        delta_angle = list(flatten(prev_movement_and_ICs[2]))
-        turn_angle = list(flatten(prev_movement_and_ICs[3]))
+        delta_x = scipy.stats.zscore(list(flatten(prev_movement_and_ICs[0])))
+        delta_y = scipy.stats.zscore(list(flatten(prev_movement_and_ICs[1])))
+        delta_angle = scipy.stats.zscore(list(flatten(prev_movement_and_ICs[2])))
+        turn_angle = scipy.stats.zscore(list(flatten(prev_movement_and_ICs[3])))
+        delta_time = scipy.stats.zscore(list(flatten(prev_movement_and_ICs[4])))
+        #
+        # delta_x = list(flatten(prev_movement_and_ICs[0]))
+        # delta_y = list(flatten(prev_movement_and_ICs[1]))
+        # delta_angle = list(flatten(prev_movement_and_ICs[2]))
+        # turn_angle = np.array(list(flatten(prev_movement_and_ICs[3])))
+        # delta_time = list(flatten(prev_movement_and_ICs[4]))
 
-        edginess_for_prev_movement = list(flatten(data_y_for_prev_movement[0]))
+        edginess_for_prev_movement   = list(flatten(data_y_for_prev_movement[0]))
         turn_angle_for_prev_movement = list(flatten(data_y_for_prev_movement[1]))
 
-        prev_movements_and_ICs_array = np.ones((len(delta_x), 4)) * 0 #np.nan
-        prev_movements_and_ICs_array[:, 0] = scipy.stats.zscore(delta_x) * turn_angle #* 0
-        prev_movements_and_ICs_array[:, 1] = scipy.stats.zscore(delta_y) * turn_angle #* 0
-        prev_movements_and_ICs_array[:, 2] = scipy.stats.zscore(delta_angle) * turn_angle# * 0
+        prev_movements_and_ICs_array = np.ones((len(delta_x), 5)) * 0 #np.nan
+
+        prev_movements_and_ICs_array[:, 0] = turn_angle * delta_x
+        prev_movements_and_ICs_array[:, 1] = turn_angle * delta_y
+        prev_movements_and_ICs_array[:, 2] = turn_angle * delta_angle
         prev_movements_and_ICs_array[:, 3] = turn_angle
+        prev_movements_and_ICs_array[:, 4] = turn_angle * delta_time
 
 
 
         # get the data
-        predict_data_y_all = [[ edginess[~np.isnan(edginess)].reshape(-1, 1), # for the mean edginess input data
+        predict_data_y_all = [[  edginess[~np.isnan(edginess)].reshape(-1, 1), # for the mean edginess input data
                                  angle_turned[~np.isnan(edginess)].reshape(-1, 1)], # for the mean edginess input data
                                   [edginess_for_prev_movement, turn_angle_for_prev_movement]] # for the movements input data
         data_y_labels = ['trajectory', 'angle']
@@ -873,6 +971,7 @@ def plot_prediction(self):
                     LR = linear_model.Ridge(alpha = .5)
                     # train the model
                     LR.fit(X_train, y_train)
+                    # print(LR.coef_)
                     # get the score
                     prediction_scores[j] = LR.score(X_test, y_test)
                 # exclude super negative ones
@@ -885,6 +984,7 @@ def plot_prediction(self):
             fig.savefig(os.path.join(self.summary_plots_folder,'Prediction of ' + data_y_labels[h] + ' - ' + self.labels[c] + '.tif'), format='tif')
             fig.savefig(os.path.join(self.summary_plots_folder,'Precition of ' + data_y_labels[h] + ' - ' + self.labels[c] + '.eps'), format='eps')
     plt.show()
+    print('hi')
 
 
 def plot_efficiency(self):
@@ -948,13 +1048,13 @@ def plot_efficiency(self):
                                                             scaling_factor, self, traj_loc, trial, trial_num, edginess, [], [])
 
                     # only do predict edgy:
-                    if c == 0:
-                        if prev_edginess[trial_num] <= HV_cutoff and 'down' in experiment: continue
-                    elif c == 1:
-                        if prev_edginess[trial_num] > HV_cutoff and 'down' in experiment: continue
+                    # if c == 0:
+                    #     if prev_edginess[trial_num] <= HV_cutoff and 'down' in experiment: continue
+                    # elif c == 1:
+                    #     if prev_edginess[trial_num] > HV_cutoff and 'down' in experiment: continue
 
                     # add data
-                    fill_in_trial_data_efficiency(ETD, condition, efficiency, efficiency_RT, experiment, mouse, num_prev_homings, self, time, trial, trial_num, trials, edginess)
+                    fill_in_trial_data_efficiency(ETD, condition, efficiency, efficiency_RT, experiment, mouse, num_prev_homings, self, time, trial, trial_num, trials, edginess, t)
 
 
 
@@ -989,8 +1089,8 @@ def plot_efficiency(self):
         # for i, (data, data_label) in enumerate(zip([edginess, efficiency, end_idx], ['Trajectory', 'Efficiency', 'Duration'])):
         #     for x_data, x_data_label in zip([num_prev_homings], ['Prior homings']):
             plot_data = data[~np.isnan(data)]
-            if False:
-                for x_data, x_data_label in zip([num_prev_homings, trials + 1, time], ['Prior homings', 'Trials', 'Time']):
+            if False or True:
+                for x_data, x_data_label in zip([num_prev_homings, trials, time], ['Prior homings', 'Trials', 'Time']):
                     # initialize figure
                     fig1, ax1 = plt.subplots(figsize=(9, 9))
                     # set up the figure
@@ -1024,27 +1124,27 @@ def plot_efficiency(self):
                     plt.savefig(os.path.join(self.summary_plots_folder, data_label + ' by ' + x_data_label + ' - ' + self.labels[c] + '.tif'), format='tif')
                     plt.savefig(os.path.join(self.summary_plots_folder, data_label + ' by ' + x_data_label + ' - ' + self.labels[c] + '.eps'), format='eps')
             # plot the boxplot
-            if data_label == 'Efficiency':
-                ax, fig = ax2, fig2
-                efficiency_data[c] = plot_data
-            elif data_label == 'Duration':
-                ax, fig = ax3, fig3
-                duration_data[c] = plot_data
-            else: continue
-            scatter_axis = scatter_the_axis_efficiency(plot_data, np.ones_like(plot_data)*c)
-            ax.scatter(scatter_axis, plot_data, color=[0, 0, 0], s=40, alpha=1, edgecolor=[0, 0, 0], linewidth=1)
-            # plot kde
-            kde = fit_kde(plot_data, bw=.02) #.2)  # .04
-            plot_kde(ax, kde, plot_data, z=c + .1, vertical=True, normto=.3, color=[.75, .75, .75], violin=False, clip=True)  # True)
-            # plot errorbar
-            median = np.percentile(plot_data, 50)
-            third_quartile = np.percentile(plot_data, 75)
-            first_quartile = np.percentile(plot_data, 25)
-            ax.errorbar(c - .2, median, yerr=np.array([[median - first_quartile], [third_quartile - median]]), color=[0,0,0], capsize=10, capthick=3, alpha=1, linewidth=3)
-            ax.scatter(c - .2, median, color=[0,0,0], s=175, alpha=1)
-            # save the plot
-            fig.savefig(os.path.join(self.summary_plots_folder, data_label + ' comparison - ' + self.labels[c] + '.tif'), format='tif')
-            fig.savefig(os.path.join(self.summary_plots_folder, data_label + ' comparison - ' + self.labels[c] + '.eps'), format='eps')
+            # if data_label == 'Efficiency':
+            #     ax, fig = ax2, fig2
+            #     efficiency_data[c] = plot_data
+            # elif data_label == 'Duration':
+            #     ax, fig = ax3, fig3
+            #     duration_data[c] = plot_data
+            # else: continue
+            # scatter_axis = scatter_the_axis_efficiency(plot_data, np.ones_like(plot_data)*c)
+            # ax.scatter(scatter_axis, plot_data, color=[0, 0, 0], s=40, alpha=1, edgecolor=[0, 0, 0], linewidth=1)
+            # # plot kde
+            # kde = fit_kde(plot_data, bw=.02) #.2)  # .04
+            # plot_kde(ax, kde, plot_data, z=c + .1, vertical=True, normto=.3, color=[.75, .75, .75], violin=False, clip=True)  # True)
+            # # plot errorbar
+            # median = np.percentile(plot_data, 50)
+            # third_quartile = np.percentile(plot_data, 75)
+            # first_quartile = np.percentile(plot_data, 25)
+            # ax.errorbar(c - .2, median, yerr=np.array([[median - first_quartile], [third_quartile - median]]), color=[0,0,0], capsize=10, capthick=3, alpha=1, linewidth=3)
+            # ax.scatter(c - .2, median, color=[0,0,0], s=175, alpha=1)
+            # # save the plot
+            # fig.savefig(os.path.join(self.summary_plots_folder, data_label + ' comparison - ' + self.labels[c] + '.tif'), format='tif')
+            # fig.savefig(os.path.join(self.summary_plots_folder, data_label + ' comparison - ' + self.labels[c] + '.eps'), format='eps')
 
     plt.show()
 
@@ -1096,7 +1196,8 @@ def plot_efficiency(self):
 
 
 
-def plot_exploration(self):
+def plot_exploration(self, saturation_percentile = 97, color_dimming = .7, dots_multiplier = .8):
+
     '''     plot the average exploration heat map       '''
     # loop over experiments and conditions
     for c, (experiment, condition) in enumerate(zip(self.experiments, self.conditions)):
@@ -1123,45 +1224,39 @@ def plot_exploration(self):
 
         # make an image out of it
         exploration_image = exploration_all.copy()
-        # exploration_image = (exploration_image / np.percentile(exploration_image, 98) * 255)
         exploration_image = (exploration_image / .00001 * 255)
         exploration_image[exploration_image > 255] = 255
-        # median filter
-        # exploration_image = scipy.signal.medfilt2d(exploration_image, kernel_size=5)
+
 
         # gaussian blur
         exploration_blur = cv2.GaussianBlur(exploration_image, ksize=(201, 201), sigmaX=15, sigmaY=15)
 
         # normalize
-        print(np.percentile(exploration_blur, 94))
-        # exploration_blur = (exploration_blur / np.percentile(exploration_blur, 94) * 255)  # 97
-        exploration_blur = (exploration_blur / 80 * 255)  # 97
+        exploration_blur = (exploration_blur / np.percentile(exploration_blur, saturation_percentile) * 255)
         exploration_blur[exploration_blur > 255] = 255
 
-        # change color map
-        exploration_blur = exploration_blur * 170 / 255
+        # colorize
+        exploration_blur = exploration_blur * color_dimming
         exploration_blur = cv2.applyColorMap(255 - exploration_blur.astype(np.uint8), cv2.COLORMAP_HOT)
 
         # make composite image
-        exploration_image = exploration_blur.copy()
-        exploration_image[exploration_all > 0] = exploration_image[exploration_all > 0] * [.8, .8, .8]
-
+        exploration_blur[exploration_all > 0] = exploration_blur[exploration_all > 0] * [dots_multiplier, dots_multiplier, dots_multiplier]
 
         # present it
-        # exploration_image = cv2.cvtColor(255 - exploration_image.astype(np.uint8), cv2.COLOR_GRAY2RGB)
-        cv2.imshow('heat map', exploration_image)
         cv2.imshow('heat map blur', exploration_blur)
         cv2.waitKey(100)
         # save results
         scipy.misc.imsave(os.path.join(self.summary_plots_folder, experiment + '_exploration_' + condition + '.tif'), exploration_image) #[:,:,::-1])
 
         shape = self.analysis[sub_experiments[0]]['obstacle']['shape']
-        obstacle_type = self.analysis[sub_experiments[0]]['obstacle']['type']
-        _, _, shelter_roi = model_arena(shape, False, False, obstacle_type, simulate=False, dark=self.dark_theme)
-        percent_in_shelter = []
-        for m in range( exploration.shape[2]):
-            mouse_exploration = exploration[:,:,m]
-            percent_in_shelter.append( np.sum(mouse_exploration*shelter_roi) )
+
+
+        # obstacle_type = self.analysis[sub_experiments[0]]['obstacle']['type']
+        # _, _, shelter_roi = model_arena(shape, False, False, obstacle_type, simulate=False, dark=self.dark_theme)
+        # percent_in_shelter = []
+        # for m in range( exploration.shape[2]):
+        #     mouse_exploration = exploration[:,:,m]
+        #     percent_in_shelter.append( np.sum(mouse_exploration*shelter_roi) )
 
 
 

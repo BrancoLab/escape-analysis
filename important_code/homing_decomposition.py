@@ -79,10 +79,12 @@ def decompose_homings(self):
 
             # compute procedural vector
             origin = np.array([int(self.coordinates['center_body_location'][0][frame_num - 1]), int(self.coordinates['center_body_location'][1][frame_num - 1])])
+            print([c * 100 / 720 for c in origin])
             endpoint_index = int(group_idx[idx]) #int(frame_num - 1 + group_idx[idx] - end_idx[int(group_idx[idx])])
             endpoint = np.array([int(self.coordinates['center_body_location'][0][endpoint_index]), int(self.coordinates['center_body_location'][1][endpoint_index]) ])
 
             vector_tip = (origin + 20 * (endpoint - origin) / np.sqrt(np.sum( (endpoint - origin)**2)) ).astype(int)
+            if vector_tip[0] < 0: vector_tip = origin
 
             cv2.arrowedLine(self.decompose_arena, tuple(origin), tuple(vector_tip), line_color, thickness=1, tipLength=.2)
             # cv2.arrowedLine(save_exploration_arena, tuple(origin), tuple(vector_tip), save_line_color, thickness=2, tipLength=.2)
@@ -107,16 +109,24 @@ def decompose_homings(self):
     # apply the contours and border to the image and save the image
     scipy.misc.imsave(os.path.join(self.save_folder, self.videoname + ' lunging image.tif'), self.decompose_arena)
 
-    if not 'start_index' in self.coordinates:
-        self.coordinates['start_index'] = []
-        self.coordinates['end_index'] = []
     if len(self.coordinates['start_index']) < self.stim_frame:
         self.coordinates['start_index'] = np.append(self.coordinates['start_index'], group_idx)
         self.coordinates['end_index'] = np.append(self.coordinates['end_index'], end_idx)
 
+
     with open(self.processed_coordinates_file, "wb") as dill_file:
         pickle.dump(self.coordinates, dill_file)
 
+
+start_idx = np.where(self.coordinates['start_index'][:self.stim_frame])[0]
+end_idx = self.coordinates['start_index'][start_idx]
+for j, (s, e) in enumerate(zip(start_idx, end_idx)):
+    # get current path's data
+    homing_idx = np.arange(s, e).astype(int)
+    path = self.coordinates['center_location'][0][homing_idx] * self.scaling_factor, \
+           self.coordinates['center_location'][1][homing_idx] * self.scaling_factor
+
+    print(path[0][0], path[1][0])
 
 
 

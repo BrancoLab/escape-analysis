@@ -95,6 +95,11 @@ def process_DLC_coordinates(self, vid_num):
         # input the data from the processing into the global database
         self.session['Tracking']['coordinates'] = self.processed_coordinates_file
 
+    # reset homing indices if re analyzing this
+    if self.processing_options['decompose homings']:
+        self.coordinates['start_index'] = []
+        self.coordinates['end_index'] = []
+
 
 def get_trial_types(self, stims_all):
     '''    Takes in a video and stimulus information, and outputs the type of trial (obstacle or none)    '''

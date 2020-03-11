@@ -95,7 +95,8 @@ def extract_homings(self, make_vid = False, homing_vectors = False, from_the_bac
                 end_position = self.coordinates['center_location'][0][frame_num-1 + int(group_length)], \
                                self.coordinates['center_location'][1][frame_num - 1 + int(group_length)]
             # don't include bouts that stay in the back of the arena
-            if end_position[1] < 320: continue
+            # if end_position[1] < 320: continue # -temp commented out
+
             if homing_vectors:
                 # don't include bouts that don't end up in the shelter
                 if end_position[1] < 550 or abs(end_position[0] - 360) > 72: continue
@@ -147,6 +148,8 @@ def get_homing_groups(self, minimum_distance, minimum_duration, minimum_shelter_
         distance_traveled = (self.distance_from_subgoal[idx - 1] - self.distance_from_subgoal[idx - group_length]) / self.distance_from_subgoal[idx - group_length]
         if k and ((group_length < minimum_duration) or (distance_traveled > minimum_distance) or \
                   (self.distance_from_shelter[idx - group_length] < minimum_shelter_distance)):
+            thresholds_passed[idx - group_length: idx] = False
+        elif k and self.trial_num==1 and (idx - group_length) < 300: # can't be at beginning
             thresholds_passed[idx - group_length: idx] = False
         elif k:
             group_idx[idx - group_length] = group_length
