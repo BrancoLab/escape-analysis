@@ -220,7 +220,7 @@ def create_database(excelpath, database=None):
     print(colored('Excel spreadsheet loaded correctly. Now loading metadata.','yellow'))
 
     # Use loaded metadata to create the database. Threadpooled for faster execution
-    num_parallel_processes = 6
+    num_parallel_processes = 4
     splitted_all_metadata = [all_metadata[i::num_parallel_processes] for i in range(num_parallel_processes)]
     pool = ThreadPool(num_parallel_processes)
 

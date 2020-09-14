@@ -12,6 +12,7 @@ import numpy as np
 # Select video file name and folder location
 # ------------------------------------------
 file_locs = ['D:\\Dropbox (UCL - SWC)\\DAQ\\upstairs_rig\\20FEB05_wall left\\CA8461\\']
+file_locs = ['D:\Dropbox (UCL - SWC)\\DAQ\\upstairs_rig\\19JUN26_walldownup\\CA7170\\']
 video_file_names = ['cam1.avi']
 save_fps = 30
 color = [False]
@@ -20,8 +21,8 @@ save_name = 'whiteout_'
 # more options
 show_video = False
 display_frame_rate = 1000
-start_frame = (26*60+8)*30#0
-end_frame = (26*60+25)*30 #np.inf
+start_frame = 0 #(26*60+8)*30#0
+end_frame = 18.5*60*30 #(26*60+25)*30 #np.inf
 
 # loop across all videos
 for vid_num in range(len(file_locs)):
@@ -60,9 +61,9 @@ for vid_num in range(len(file_locs)):
                 frame = frame[:,:,0]
 
             # modify the frame in some way
-            modified_top = frame[:top_limit, :]
-            modified_top[modified_top_mask] = 180
-            frame[:top_limit, :] = modified_top
+            # modified_top = frame[:top_limit, :]
+            # modified_top[modified_top_mask] = 180
+            # frame[:top_limit, :] = modified_top
 
             # write the new video
             data_video.write(frame)

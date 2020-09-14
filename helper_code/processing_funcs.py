@@ -49,15 +49,17 @@ def set_up_arena_visualizations(self):
     # Set up arena for visualizations
     experiment = self.session['Metadata']['experiment']
     arena, _, _ = model_arena((self.height, self.width), self.trial_types[0], registration = False, obstacle_type = self.obstacle_type, \
-                              shelter=not 'no shelter' in experiment and not 'food' in experiment, dark = self.dark_theme)
+                              shelter=not 'no shelter' in experiment and not 'food' in experiment, dark = self.dark_theme, shift_wall = True)
     _, _, shelter_roi = model_arena((self.height, self.width), self.trial_types[0], registration=False, obstacle_type=self.obstacle_type, shelter=not 'no shelter' in experiment, dark=self.dark_theme)
     # set up for homing extraction
     if self.processing_options['spontaneous homings']: self.homing_arena = cv2.cvtColor(arena.copy(), cv2.COLOR_GRAY2RGB)
+    if self.processing_options['spontaneous anti-homings']: self.homing_arena = cv2.cvtColor(arena.copy(), cv2.COLOR_GRAY2RGB)
     # set up for homing decomposition
     if self.processing_options['decompose homings']: self.decompose_arena = cv2.cvtColor(arena.copy(), cv2.COLOR_GRAY2RGB)
+    if self.processing_options['decompose anti-homings']: self.decompose_arena = cv2.cvtColor(arena.copy(), cv2.COLOR_GRAY2RGB)
     # set up for escapes
     if self.processing_options['visualize escapes']:
-        self.arena_with_prev_trials = cv2.cvtColor(arena.copy(), cv2.COLOR_GRAY2RGB)
+        if not len(self.session['temp']): self.arena_with_prev_trials = cv2.cvtColor(arena.copy(), cv2.COLOR_GRAY2RGB)
         self.shelter_roi = shelter_roi
     # set up for exploration
     if self.processing_options['exploration']:
@@ -79,7 +81,7 @@ def process_DLC_coordinates(self, vid_num):
     # otherwise, extract the coordinates
     else:
         # import DLC processing functions
-        from DLC_code.dlc_funcs import extract_dlc, filter_and_transform_dlc, compute_pose_from_dlc
+        from DLC_code.dlc_funcs import extract_dlc, filter_and_transform_dlc, compute_pose_from_dlc, compute_anti_pose_from_dlc
         # open raw coordinates from DLC
         self.coordinates = extract_dlc(self.dlc_settings, self.video_path)
         # process these coordinates
@@ -90,6 +92,7 @@ def process_DLC_coordinates(self, vid_num):
         # compute speed, angles, and pose from coordinates
         self.coordinates = compute_pose_from_dlc(self.dlc_settings['body parts'], self.coordinates, self.shelter_location,
                                                  self.session['Registration'][4][0], self.session['Registration'][4][1], self.subgoal_location)
+
         # save the processed coordinates to the video folder
         with open(self.processed_coordinates_file, "wb") as dill_file: pickle.dump(self.coordinates, dill_file)
         # input the data from the processing into the global database
@@ -97,8 +100,20 @@ def process_DLC_coordinates(self, vid_num):
 
     # reset homing indices if re analyzing this
     if self.processing_options['decompose homings']:
-        self.coordinates['start_index'] = []
-        self.coordinates['end_index'] = []
+        self.coordinates['start_index'] = [np.zeros(300)]
+        self.coordinates['end_index'] = [np.zeros(300)]
+
+    # reset homing indices if re analyzing this
+    if self.processing_options['decompose anti-homings']:
+        # get anti metrics
+        if self.processing_options['decompose anti-homings']:
+            from DLC_code.dlc_funcs import compute_anti_pose_from_dlc
+            # compute speed, angles, and pose from coordinates
+            self.coordinates = compute_anti_pose_from_dlc(self.coordinates, self.shelter_location, self.session['Registration'][4][0],
+                                                          self.session['Registration'][4][1], self.subgoal_location)
+
+        self.coordinates['anti_start_index'] = [np.zeros(300)]
+        self.coordinates['anti_end_index']   = [np.zeros(300)]
 
 
 def get_trial_types(self, stims_all):
@@ -131,6 +146,7 @@ def get_trial_types(self, stims_all):
         self.trial_types = sum(self.session['Tracking']['Trial Types'], [])
         # finish up
         print(self.trial_types)
+
         vid.release()
 
 def arena_specific_trial_types(self, stims_video, vid):
@@ -152,6 +168,11 @@ def arena_specific_trial_types(self, stims_video, vid):
             self.trial_types = [2 * int(s < 36 * 30 * 60) for s in stims_video]
         else:
             self.trial_types = [2 for s in stims_video]
+
+    elif self.session.Metadata['experiment'] == 'Circle wall down shelter move':
+            self.trial_types = [0 for s in stims_video]
+            if self.trial_types: self.trial_types[0] = -1
+
     # loop through each trial in the session
     elif 'wall' in self.obstacle_type:
         for trial_num, stim_frame in enumerate(stims_video):
@@ -191,7 +212,7 @@ def get_trial_details(self):
                                                  self.trial_num, round((self.stim_frame + self.previous_vid_duration) / self.fps / 60))
 
 
-def speed_colors(speed, simulation=False, red=False, plotting = False):
+def speed_colors(speed, simulation=False, red=False, blue = False, plotting = False, plot_multiplier = 1):
     '''    set up colors for speed-dependent DLC analysis    '''
     # colors depending on speed
     if red:
@@ -199,15 +220,25 @@ def speed_colors(speed, simulation=False, red=False, plotting = False):
         medium_color = np.array([240, 10, 10])
         fast_color = np.array([220, 220, 0])
         super_fast_color = np.array([232, 0, 0])
+    elif blue:
+        slow_color = np.array([254, 254, 254])
+        medium_color = np.array([252.6, 253.5, 254])
+        if plotting: medium_color = np.array([253.6, 253.9, 254])
+        if plotting: medium_color = np.array([253.3, 253.7, 254])
+        fast_color = np.array([240, 250, 254])
+        super_fast_color = np.array([200, 250, 254])
     else:
         slow_color = np.array([240, 240, 240])
         medium_color = np.array([190, 190, 240])
         fast_color = np.array([0, 232, 120])
         super_fast_color = np.array([0, 232, 0])
     # vary color based on speed
-    speed_threshold_3 = 20
-    speed_threshold_2 = 14
-    speed_threshold = 7
+    speed_threshold_3 = 14.4 * plot_multiplier # 20   60 cm/s
+    speed_threshold_2 = 10.8 * plot_multiplier #    45 cm/s
+    speed_threshold = 7.2 * plot_multiplier #7   30 cm/s
+    # print(speed)
+
+
     # apply thresholds
     if speed > speed_threshold_3:
         speed_color = super_fast_color
@@ -227,6 +258,26 @@ def speed_colors(speed, simulation=False, red=False, plotting = False):
         speed_color_light, speed_color_dark = np.ones(3) * np.mean(speed_color_light) / 1.2, np.ones(3) * np.mean(speed_color_dark) / 1.2
 
     return speed_color_light, speed_color_dark
+
+# '''     make color bar      '''
+# import matplotlib.pyplot as plt
+#
+# fig, ax = plt.subplots(figsize = (4,12))
+# plt.axis('off')
+# ax.margins(0, 0)
+# ax.xaxis.set_major_locator(plt.NullLocator())
+# ax.yaxis.set_major_locator(plt.NullLocator())
+# ax.set_xlim([-.1,1.1])
+# ax.set_ylim([-1,61])
+# height = .1
+# for speed in np.arange(0,60+height, height):
+#     speed_put = speed / (100 / 720 * 30)
+#     speed_color_light, speed_color_dark = speed_colors(speed_put, blue = True, plotting = True)
+#     color_show = plt.Rectangle((0, speed), 1, height, color=np.array([1,1,1]) * speed_color_dark, linewidth=0, fill=True)
+#     ax.add_artist(color_show)
+
+
+
 
 
 def extract_variables(self, new_thresholds = True):
@@ -254,11 +305,25 @@ def extract_variables(self, new_thresholds = True):
     self.shelter_location = [s * frame_shape[1-i]/1000 for i, s in enumerate(self.shelter_location)]
     self.distance_from_shelter_front = np.sqrt( (self.x_location_face - self.shelter_location[0] )**2 + (self.y_location_face - self.shelter_location[1])**2 )
 
+    # compute distance from anti shelter
+    anti_shelter_location = [500, 1000-865]
+    anti_shelter_location = [s * frame_shape[1 - i] / 1000 for i, s in enumerate(anti_shelter_location)]
+    self.distance_from_anti_shelter = np.sqrt((self.coordinates['center_location'][0] - anti_shelter_location[0] ) ** 2 +
+                                                   (self.coordinates['center_location'][1] - anti_shelter_location[1] ) ** 2)
+
     distance_arena = np.load('.\\arena_files\\distance_arena_' + self.obstacle_type + '.npy')
     angle_arena = np.load('.\\arena_files\\angle_arena_' + self.obstacle_type + '.npy')
 
     self.distance_from_obstacle = distance_arena[self.y_location_butt, self.x_location_butt]
     self.angles_from_obstacle = angle_arena[self.y_location_butt, self.x_location_butt]
+
+    # replace goal metrics with anti goal metrics
+    if self.processing_options['decompose anti-homings']:
+        self.goal_speeds = self.coordinates['anti_speed_toward_subgoal'][self.frame_nums]
+        self.subgoal_angles = self.coordinates['anti_subgoal_angle'][self.frame_nums]
+        self.distance_from_shelter = self.coordinates['anti_distance_from_shelter'][self.frame_nums]
+        self.distance_from_subgoal = self.coordinates['anti_distance_from_shelter'][self.frame_nums]
+        self.within_subgoal_bound = np.array(self.coordinates['anti_in_subgoal_bound'])[self.frame_nums]
     
 
 
@@ -363,7 +428,7 @@ def initialize_wall_analysis(self, stim_frame, vid):
         # print(colored('Wall falling trial', 'green'))
         wall_height_timecourse = [1]
         trial_type = -1
-    elif ('down' in experiment and (-1 in self.trial_types or 0 in self.trial_types)) or wall_darkness_post < 160: # TEMP ?
+    elif ('down' in experiment and (-1 in self.trial_types or 0 in self.trial_types)): # or wall_darkness_post < 160: # TEMP ?
         trial_type = 0
         wall_height_timecourse = 0
     elif 'down' in experiment and not (-1 in self.trial_types):
@@ -387,8 +452,8 @@ def initialize_wall_analysis(self, stim_frame, vid):
             ret, frame = vid.read()
             frame = register_frame(frame, self.x_offset, self.y_offset, self.session['Registration'], map1, map2)
             # measure the wall edges
-            left_wall_darkness = sum(sum(frame[y_wall_up_ROI[0]:y_wall_up_ROI[1], x_wall_up_ROI_left[0]:x_wall_up_ROI_left[1]] < 200))
-            right_wall_darkness = sum(sum(frame[y_wall_up_ROI[0]:y_wall_up_ROI[1], x_wall_up_ROI_right[0]:x_wall_up_ROI_right[1]] < 200))
+            left_wall_darkness = sum(sum(frame[y_wall_up_ROI[0]:y_wall_up_ROI[1], x_wall_up_ROI_left[0]:x_wall_up_ROI_left[1]] < 150))
+            right_wall_darkness = sum(sum(frame[y_wall_up_ROI[0]:y_wall_up_ROI[1], x_wall_up_ROI_right[0]:x_wall_up_ROI_right[1]] < 150))
             # calculate overall change
             left_wall_darkness_change_overall = left_wall_darkness - wall_darkness[1, 0]
             right_wall_darkness_change_overall = right_wall_darkness - wall_darkness[1, 1]

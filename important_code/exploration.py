@@ -2,13 +2,15 @@ import cv2
 import numpy as np
 import scipy
 import os
-
+from helper_code.registration_funcs import model_arena
 
 def explore(self, heat_map = True, path_from_shelter = True, silhouette_map = True):
     '''    compute and display exploration    '''
 
     # get the frame numbers to analyze
     frame_nums = np.arange(self.previous_stim_frame,self.stim_frame)
+    print(self.previous_stim_frame)
+    # frame_nums = np.arange(0, self.stim_frame + 90)
 
     # find when last in shelter
     distance_from_shelter = self.coordinates['distance_from_shelter'][frame_nums]
@@ -22,14 +24,19 @@ def explore(self, heat_map = True, path_from_shelter = True, silhouette_map = Tr
         # only do selected options
         if not option: continue
         # start with a blank copy
-        exploration_arena = self.exploration_arena.copy()
+        arena, _, shelter_roi = model_arena((self.height, self.width), self.trial_type!=0, registration=False, obstacle_type=self.obstacle_type,
+                                  shelter=('down' in self.videoname or not 'no shelter' in self.videoname) and not 'food' in self.videoname, dark=self.dark_theme, shift_wall = True)
+
+        exploration_arena = cv2.cvtColor(arena.copy(),cv2.COLOR_GRAY2RGB)
         # initialize the mouse mask
-        model_mouse_mask_initial = self.exploration_arena[:, :, 0] * 0
+        model_mouse_mask_initial = exploration_arena[:, :, 0] * 0
         # for silhouette map
         if o and last_in_shelter.size:
             # set up timing for path from shelter
-            total_time = len(frame_nums[start_idx:])
-            start_frame = frame_nums[start_idx]
+            # total_time = len(frame_nums[start_idx:])
+            # start_frame = frame_nums[start_idx]
+            total_time = len(frame_nums)
+            start_frame = frame_nums
             start_idx = last_in_shelter[-1]
             suffix = '_from_last_trial'
         # for path from shelter
@@ -59,8 +66,12 @@ def explore(self, heat_map = True, path_from_shelter = True, silhouette_map = Tr
             # create color multiplier to modify image
             color_multiplier = 1 - (1 - time_color / [255, 255, 255]) / (np.mean(1 - time_color / [255, 255, 255]) * multiplier)
             # prevent any region from getting too dark
-            # if np.mean(exploration_arena[model_mouse_mask.astype(bool)]) < 100:
-            #     continue
+            if np.mean(exploration_arena[model_mouse_mask.astype(bool)]) < 100:
+                continue
+            # don't color below arena
+            if body_location[1] > 670: continue
+            # don't color if at shelter
+            if np.sum(model_mouse_mask * shelter_roi): continue
             # apply color to arena image
             exploration_arena[model_mouse_mask.astype(bool)] = exploration_arena[model_mouse_mask.astype(bool)] * color_multiplier
             # display image

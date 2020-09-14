@@ -13,7 +13,7 @@ def registration(session, fisheye_map_location):
     '''
     get_arena_details(session)
 
-    if not np.array(session['Registration']).shape: # or True:
+    if not np.array(session['Registration']).shape or True:
         print(colored(' - Registering session', 'green'))
 
         # Get background
@@ -122,6 +122,18 @@ def get_arena_details(self, experiment = 'experiment'):
         subgoal_location = {}
         subgoal_location['region'] = [(0, 0),(0, 420), (1000, 420), (1000, 0)] # contour of where sub-goal is relevant
         subgoal_location['sub-goals'] = [(620, 420)] # (x, y) for each sub-goal
+
+    elif 'down shelter move' in experiment:
+        x_offset = 300
+        y_offset = 120
+        obstacle_type = 'wall'
+        shelter_location = [500, 865-460+50] #885
+
+        # points of optimal subgoals
+        subgoal_location = {}
+        subgoal_location['region'] = [(0, 0),(0, 500), (1000, 500), (1000, 0)] # contour of where sub-goal is relevant
+        subgoal_location['sub-goals'] = [(250, 500),(750, 500)] # (x, y) for each sub-goal
+
 
     elif ('Circle' in experiment or 'Barnes' in experiment):
         x_offset = 300
@@ -238,10 +250,10 @@ def model_arena(size, trial_type, registration = False, obstacle_type = 'wall', 
     # generate arena topography, depending on arena
     if obstacle_type == 'wall' or obstacle_type == 'none':
         # arena outline
-        cv2.circle(model_arena, (500, 500), 460, 245, -1)
+        cv2.circle(model_arena, (500, 500), 460, 255, -1)
         if not dark: cv2.circle(model_arena, (500, 500), 460, 0, 1, lineType = 16)
 
-        if shift_wall:
+        if shift_wall and trial_type:
             # add wall - down
             cv2.rectangle(model_arena, (int(500 - 500 / 2), int(500 - 6 / 2 - 10)), (int(500 + 500 / 2), int(500 + 6 / 2 - 10)), 90, thickness=-1)
 
@@ -256,7 +268,7 @@ def model_arena(size, trial_type, registration = False, obstacle_type = 'wall', 
             cv2.rectangle(model_arena, (int(500 - 504 / 2), int(500 - 8 / 2)), (int(500 + 504 / 2), int(500 + 8 / 2)), 0, thickness=-1)
     elif obstacle_type == 'U wall':
         # arena outline
-        cv2.circle(model_arena, (500, 500), 460, 245, -1)
+        cv2.circle(model_arena, (500, 500), 460, 255, -1)
         if not dark: cv2.circle(model_arena, (500, 500), 460, 0, 1, lineType=16)
 
         cv2.rectangle(model_arena, (int(250 - 6 / 2), int(250)), (int(250 + 6 / 2), int(500)), 90, thickness=-1)
@@ -267,14 +279,14 @@ def model_arena(size, trial_type, registration = False, obstacle_type = 'wall', 
 
     elif obstacle_type == '11 wall':
         # arena outline
-        cv2.circle(model_arena, (500, 500), 460, 245, -1)
+        cv2.circle(model_arena, (500, 500), 460, 255, -1)
         if not dark: cv2.circle(model_arena, (500, 500), 460, 0, 1, lineType=16)
         cv2.rectangle(model_arena, (int(250 - 6 / 2), int(250)), (int(250 + 6 / 2), int(500)), 90, thickness=-1)
         cv2.rectangle(model_arena, (int(750 - 6 / 2), int(250)), (int(750 + 6 / 2), int(500)), 90, thickness=-1)
 
     elif obstacle_type == 'center wall':
         # arena outline
-        cv2.circle(model_arena, (500, 500), 460, 245, -1)
+        cv2.circle(model_arena, (500, 500), 460, 255, -1)
         if not dark: cv2.circle(model_arena, (500, 500), 460, 0, 1, lineType=16)
         if trial_type:
             # add wall - down
@@ -282,7 +294,7 @@ def model_arena(size, trial_type, registration = False, obstacle_type = 'wall', 
 
     elif obstacle_type == 'center void':
         # arena outline
-        cv2.circle(model_arena, (500, 500), 460, 245, -1)
+        cv2.circle(model_arena, (500, 500), 460, 255, -1)
         if not dark: cv2.circle(model_arena, (500, 500), 460, 0, 1, lineType=16)
         if trial_type:
             # void
@@ -291,14 +303,14 @@ def model_arena(size, trial_type, registration = False, obstacle_type = 'wall', 
 
     elif 'other' in obstacle_type:
         # arena outline
-        cv2.rectangle(model_arena, (200, 200), (800, 800), 245, -1)
+        cv2.rectangle(model_arena, (200, 200), (800, 800), 255, -1)
 
         # add wall - down
         cv2.rectangle(model_arena, (int(320), int(420 - 6 / 2)), (int(800), int(420 + 6 / 2)), 90, thickness=-1)
 
     elif obstacle_type == 'side wall':
         # arena outline
-        cv2.rectangle(model_arena, (200, 200), (800, 800), 245, -1)
+        cv2.rectangle(model_arena, (200, 200), (800, 800), 255, -1)
         if not dark: cv2.rectangle(model_arena, (200, 200), (800, 800), 0, 1, lineType=16)
 
         # add wall - down
@@ -307,7 +319,7 @@ def model_arena(size, trial_type, registration = False, obstacle_type = 'wall', 
     elif obstacle_type == 'side wall 14':
         # arena outline
         if not dark:  cv2.rectangle(model_arena, (100, 100), (900, 900), 0, 2, lineType=16)
-        cv2.rectangle(model_arena, (100, 100), (900, 900), 245, -1)
+        cv2.rectangle(model_arena, (100, 100), (900, 900), 255, -1)
 
         # add wall
         if not trial_type:
@@ -318,7 +330,7 @@ def model_arena(size, trial_type, registration = False, obstacle_type = 'wall', 
     elif obstacle_type == 'side wall 32':
         # arena outline
         if not dark:  cv2.rectangle(model_arena, (100, 100), (900, 900), 0, 2, lineType=16)
-        cv2.rectangle(model_arena, (100, 100), (900, 900), 245, -1)
+        cv2.rectangle(model_arena, (100, 100), (900, 900), 255, -1)
 
         # add wall
         if not trial_type:
@@ -328,21 +340,21 @@ def model_arena(size, trial_type, registration = False, obstacle_type = 'wall', 
 
     elif obstacle_type == 'side wall':
         # arena outline
-        cv2.rectangle(model_arena, (200, 200), (800, 800), 245, -1)
+        cv2.rectangle(model_arena, (200, 200), (800, 800), 255, -1)
 
         # add wall - down
         cv2.rectangle(model_arena, (int(200), int(420 - 6 / 2)), (int(200 + 420), int(420 + 6 / 2)), 90, thickness=-1)
 
     elif obstacle_type == 'longer wall':
         # arena outline
-        cv2.rectangle(model_arena, (200, 200), (800, 800), 245, -1)
+        cv2.rectangle(model_arena, (200, 200), (800, 800), 255, -1)
 
         # add wall - down
         cv2.rectangle(model_arena, (int(200), int(440 - 6 / 2)), (int(200 + 470), int(440 + 6 / 2)), 90, thickness=-1)
 
     elif obstacle_type == 'T wall':
         # arena outline
-        cv2.rectangle(model_arena, (200, 200), (800, 800), 245, -1)
+        cv2.rectangle(model_arena, (200, 200), (800, 800), 255, -1)
 
         # add wall - down
         cv2.rectangle(model_arena, (int(200), int(440 - 6 / 2)), (int(200 + 480), int(440 + 6 / 2)), 90, thickness=-1)
@@ -350,7 +362,7 @@ def model_arena(size, trial_type, registration = False, obstacle_type = 'wall', 
 
     elif obstacle_type == 'void':
         # arena outline
-        cv2.circle(model_arena, (500, 500), 460, 245, -1)
+        cv2.circle(model_arena, (500, 500), 460, 255, -1)
         if not dark: cv2.circle(model_arena, (500, 500), 460, 0, 1, lineType=16)
         # add void
         cv2.rectangle(model_arena, (int(500 - 500 / 2), int(500 - 100 / 2)), (int(500 + 500 / 2), int(500 + 100 / 2)), 90, thickness=-1)
@@ -358,7 +370,7 @@ def model_arena(size, trial_type, registration = False, obstacle_type = 'wall', 
     elif obstacle_type == 'triangle':
         # arena outline
         triangle_contours = [np.array([(500, int((1000-750)/2)), (int((1000-866)/2), int((1000-750)/2 + 750)), (int((1000-866)/2 + 866), int((1000-750)/2 + 750))])]
-        cv2.drawContours(model_arena, triangle_contours, 0, 245, -1)
+        cv2.drawContours(model_arena, triangle_contours, 0, 255, -1)
 
         # add walls
         wall_contours_1 = [np.array([(int(500), int((1000 - 750) / 2 + 160)), (int(500), int((1000 - 750) / 2 + 160 + 340))])]

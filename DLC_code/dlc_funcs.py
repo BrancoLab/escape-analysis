@@ -228,7 +228,7 @@ def compute_pose_from_dlc(body_parts, coordinates, shelter_location, width, heig
     locations = ['head_location', 'butt_location', 'snout_location', 'neck_location', 'shoulder_location', 'nack_location',
                   'center_body_location', 'center_location', 'front_location', 'butty_location']
     for loc in locations:
-        coordinates[loc][0][coordinates[loc][0] >= width] = width - 1
+        coordinates[loc][0][coordinates[loc][0] >= width ] = width - 1
         coordinates[loc][1][coordinates[loc][1] >= height] = height - 1
         coordinates[loc][0][coordinates[loc][0] < 0] = 0
         coordinates[loc][1][coordinates[loc][1] < 0] = 0
@@ -291,3 +291,73 @@ def compute_pose_from_dlc(body_parts, coordinates, shelter_location, width, heig
     return coordinates
 
 
+
+def compute_anti_pose_from_dlc(coordinates, shelter_location, width, height, subgoal_locations):
+
+    # get anti-shelter
+    anti_shelter_location = [shelter_location[0], 1000-shelter_location[1]]
+    subgoal_locations['anti region'] = [(0, 500), (0, 1000), (1000, 1000), (1000, 500)]
+
+    # compute distance from shelter
+    coordinates['anti_distance_from_shelter'] = np.sqrt((coordinates['center_location'][0] - anti_shelter_location[0] * width / 1000) ** 2 +
+                                                   (coordinates['center_location'][1] - anti_shelter_location[1] * height / 1000) ** 2)
+
+    # compute speed w.r.t. shelter
+    coordinates['anti_speed_toward_shelter'] = np.concatenate( ([0], np.diff(coordinates['anti_distance_from_shelter'])))
+
+    # compute angle w.r.t. shelter
+    coordinates['anti_shelter_angle'] = np.degrees( np.arctan2(coordinates['front_location'][1] - coordinates['butty_location'][1], coordinates['front_location'][0] - coordinates['butty_location'][0]) -\
+             np.arctan2(anti_shelter_location[1] * height / 1000 - coordinates['butty_location'][1], anti_shelter_location[0] * width / 1000 - coordinates['butty_location'][0]) )
+    coordinates['anti_shelter_angle'][coordinates['anti_shelter_angle'] < -180] = coordinates['anti_shelter_angle'][coordinates['anti_shelter_angle'] < -180] + 360
+    coordinates['anti_shelter_angle'][coordinates['anti_shelter_angle'] > 180] = coordinates['anti_shelter_angle'][coordinates['anti_shelter_angle'] > 180] - 360
+
+    # instead of angle to shelter, take min of angle to subgoals
+    coordinates['anti_subgoal_angle'] = np.zeros((len(subgoal_locations['sub-goals']) + 1, len(coordinates['speed'])))
+    coordinates['anti_subgoal_angle'][0,:] = coordinates['anti_shelter_angle']
+
+    # instead of  distance to shelter, take min of distance to shelter and distance to subgoals
+    coordinates['anti_distance_from_subgoal'] = np.zeros((len(subgoal_locations['sub-goals']) + 1, len(coordinates['speed'])))
+
+    # instead of speed to shelter, take max of speed to shelter and speed to subgoals
+    coordinates['anti_speed_toward_subgoal'] = np.zeros((len(subgoal_locations['sub-goals'])+1, len(coordinates['speed']) ))
+    coordinates['anti_speed_toward_subgoal'][0,:] = coordinates['anti_speed_toward_shelter']
+    subgoal_bound = [ (int(x * width / 1000), int(y* height / 1000)) for x, y in subgoal_locations['anti region'] ]
+
+    # compute distance from subgoal
+    subgoal_mask = np.zeros((height, width))
+    cv2.drawContours(subgoal_mask, [np.array(subgoal_bound)], 0, 100, -1)
+    subgoal_mask = subgoal_mask.astype(bool)
+
+    # get the x and y locations to loop through
+    x_location = coordinates['front_location'][0].astype(np.uint16)
+    y_location = coordinates['front_location'][1].astype(np.uint16)
+    x_location[x_location >= width] = width - 1
+    y_location[y_location >= height] = height - 1
+
+    for i, sg in enumerate(subgoal_locations['sub-goals']):
+        # calculate distance to subgoal
+        coordinates['anti_distance_from_subgoal'][i+1, :] = np.sqrt((coordinates['center_location'][0] - sg[0] * width / 1000) ** 2 +
+                                                   (coordinates['center_location'][1] - sg[1] * height / 1000) ** 2)
+
+        # compute valid locations to go to subgoal
+        within_subgoal_bound = []
+        for x, y in zip(x_location, y_location):
+            within_subgoal_bound.append(subgoal_mask[y, x])
+
+
+        # compute speed w.r.t. subgoal
+        coordinates['anti_speed_toward_subgoal'][i+1, :] = np.concatenate( ([0], np.diff(coordinates['anti_distance_from_subgoal'][i+1, :]))) * within_subgoal_bound
+
+        # compute subgoal angle
+        coordinates['anti_subgoal_angle'][i + 1, :] = np.degrees(np.arctan2(coordinates['front_location'][1] - coordinates['butty_location'][1], coordinates['front_location'][0] - coordinates['butty_location'][0]) - \
+                                                  np.arctan2(sg[1] * height / 1000 - coordinates['butty_location'][1], sg[0] * width / 1000 - coordinates['butty_location'][0]))
+        coordinates['anti_subgoal_angle'][i + 1, coordinates['anti_subgoal_angle'][i + 1, :] < -180] = coordinates['anti_subgoal_angle'][i + 1, coordinates['anti_subgoal_angle'][i + 1, :] < -180] + 360
+        coordinates['anti_subgoal_angle'][i + 1, coordinates['anti_subgoal_angle'][i + 1, :] >  180] = coordinates['anti_subgoal_angle'][i + 1, coordinates['anti_subgoal_angle'][i + 1, :] >  180] - 360
+        coordinates['anti_subgoal_angle'][i + 1, :] = coordinates['anti_subgoal_angle'][i + 1, :] + ( [(1 - x)*9999 for x in within_subgoal_bound] )
+
+    coordinates['anti_speed_toward_subgoal'] = np.min(coordinates['anti_speed_toward_subgoal'], 0)
+    coordinates['anti_distance_from_subgoal'] = np.min(coordinates['anti_distance_from_subgoal'], 0)
+    coordinates['anti_subgoal_angle'] = np.nanmin(abs(coordinates['anti_subgoal_angle']), 0)
+    coordinates['anti_in_subgoal_bound'] = within_subgoal_bound
+
+    return coordinates

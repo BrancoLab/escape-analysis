@@ -8,7 +8,7 @@ import pickle
 from helper_code.processing_funcs import extract_variables, convolve
 from important_code.escape_visualization import make_model_mouse_mask
 
-def decompose_homings(self):
+def decompose_homings(self, anti = False):
     '''     decompose homings into piecewise linear bouts       '''
     '''    note: minimum distance traditionally 50, 200 to separate bouts    '''
 
@@ -26,7 +26,7 @@ def decompose_homings(self):
     # set distance parameters
     minimum_distance = 50
     max_shelter_proximity = 50
-    critical_turn = 45 #50? 75? TEMP -- WAS 25
+    critical_turn = 45 #45!! #50? 75? TEMP -- WAS 25
     back_butt_dist = 18
 
     # do convolutions to get current, future, far future, and past speeds w.r.t the shelter
@@ -79,8 +79,7 @@ def decompose_homings(self):
 
             # compute procedural vector
             origin = np.array([int(self.coordinates['center_body_location'][0][frame_num - 1]), int(self.coordinates['center_body_location'][1][frame_num - 1])])
-            print([c * 100 / 720 for c in origin])
-            endpoint_index = int(group_idx[idx]) #int(frame_num - 1 + group_idx[idx] - end_idx[int(group_idx[idx])])
+            endpoint_index = int(group_idx[idx])
             endpoint = np.array([int(self.coordinates['center_body_location'][0][endpoint_index]), int(self.coordinates['center_body_location'][1][endpoint_index]) ])
 
             vector_tip = (origin + 20 * (endpoint - origin) / np.sqrt(np.sum( (endpoint - origin)**2)) ).astype(int)
@@ -97,7 +96,6 @@ def decompose_homings(self):
 
         # apply color to arena image
         self.decompose_arena[model_mouse_mask.astype(bool)] = self.decompose_arena[model_mouse_mask.astype(bool)] * color_multiplier
-        # save_exploration_arena[model_mouse_mask.astype(bool)] = save_exploration_arena[model_mouse_mask.astype(bool)] * save_color_multiplier
 
         # display image
         cv2.imshow(self.save_folder + 'movements', self.decompose_arena)
@@ -107,26 +105,35 @@ def decompose_homings(self):
             break
 
     # apply the contours and border to the image and save the image
-    scipy.misc.imsave(os.path.join(self.save_folder, self.videoname + ' lunging image.tif'), self.decompose_arena)
+    if anti: image_name =  self.videoname + ' anti-lunging image.tif'
+    else: image_name =  self.videoname + ' lunging image.tif'
+    scipy.misc.imsave(os.path.join(self.save_folder, image_name), self.decompose_arena)
 
-    if len(self.coordinates['start_index']) < self.stim_frame:
-        self.coordinates['start_index'] = np.append(self.coordinates['start_index'], group_idx)
-        self.coordinates['end_index'] = np.append(self.coordinates['end_index'], end_idx)
+    if anti:
+        if len(self.coordinates['anti_start_index']) < self.stim_frame:
+            self.coordinates['anti_start_index'] = np.append(self.coordinates['anti_start_index'], group_idx)
+            self.coordinates['anti_end_index'] = np.append(self.coordinates['anti_end_index'], end_idx)
+    else:
+        if len(self.coordinates['start_index']) < self.stim_frame:
+            self.coordinates['start_index'] = np.append(self.coordinates['start_index'], group_idx)
+            self.coordinates['end_index'] = np.append(self.coordinates['end_index'], end_idx)
 
+    # print(np.where(self.coordinates['start_index']))
+    # print(self.coordinates['start_index'][np.where(self.coordinates['start_index'])])
+    # print(np.where(self.coordinates['end_index']))
 
     with open(self.processed_coordinates_file, "wb") as dill_file:
         pickle.dump(self.coordinates, dill_file)
 
-
-start_idx = np.where(self.coordinates['start_index'][:self.stim_frame])[0]
-end_idx = self.coordinates['start_index'][start_idx]
-for j, (s, e) in enumerate(zip(start_idx, end_idx)):
-    # get current path's data
-    homing_idx = np.arange(s, e).astype(int)
-    path = self.coordinates['center_location'][0][homing_idx] * self.scaling_factor, \
-           self.coordinates['center_location'][1][homing_idx] * self.scaling_factor
-
-    print(path[0][0], path[1][0])
+# start_idx = np.where(self.coordinates['start_index'][:self.stim_frame])[0]
+# end_idx = self.coordinates['start_index'][start_idx]
+# for j, (s, e) in enumerate(zip(start_idx, end_idx)):
+#     # get current path's data
+#     homing_idx = np.arange(s, e).astype(int)
+#     path = self.coordinates['center_location'][0][homing_idx] * self.scaling_factor, \
+#            self.coordinates['center_location'][1][homing_idx] * self.scaling_factor
+#
+#     print(path[0][0], path[1][0])
 
 
 
@@ -165,9 +172,10 @@ def multi_phase_phinder(self, thresholds_passed, minimum_distance_spont, max_she
                     group_length -= (group_length - (closest_to_shelter + 1) )
 
                 #TEMPORARY: IF START TOO CLOSE, THEN SKIP
-                if self.y_location_face[np.max(np.where(~stim_on[:start_index]))+1] < 23:
-                    continue
-
+                try:
+                    if self.y_location_face[np.max(np.where(~stim_on[:start_index]))+1] < 23:
+                        continue
+                except: print(self.videoname)
             # get the distance travelled so far during the bout
             distance_from_start[idx - group_length: idx] = np.sqrt((self.x_location_butt[idx - group_length: idx] - self.x_location_butt[idx - group_length]) ** 2 + \
                                                                    (self.y_location_butt[idx - group_length: idx] - self.y_location_butt[idx - group_length]) ** 2)

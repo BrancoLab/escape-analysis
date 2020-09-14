@@ -89,12 +89,25 @@ class master():
         # Import processing code
         from run_processing import processing
         # loop over all selected sessions
+        i = 0; arena_with_history = []
+        # sessions_to_run = [sessions_to_run[idx] for idx in [3,0,1,2]] #[3,5,0,1,4,2]
+        # sessions_to_run = [sessions_to_run[idx] for idx in [1,2,0,3]] # [2,1,0,4,3,5]
+        # sessions_to_run = [sessions_to_run[idx] for idx in [2,3,1,0]]
+        # sessions_to_run = [sessions_to_run[idx] for idx in [3,1,2,0]]
+        # sessions_to_run = [sessions_to_run[idx] for idx in [2,4,3,0,1,5]]
+        # sessions_to_run = [sessions_to_run[idx] for idx in [3,2,0,1]]
+        # sessions_to_run = [sessions_to_run[idx] for idx in [4,0,1,3,2]]
+        # sessions_to_run = [sessions_to_run[idx] for idx in [1, 0, 2]]
         for session_name in sessions_to_run:
             # get and report the session and metadata
             session = self.db.loc[session_name]; metadata = session.Metadata
             print(colored('Processing: {} - {} (#{})'.format(metadata['experiment'],metadata['mouse_id'], metadata['number']), 'green'))
             # run the processing
-            processing(session)
+            session['temp'] = arena_with_history
+            processing(session, i)
+            # to put all entire history there
+            arena_with_history = session['temp']
+            i+=1
             # input the data from the processing into the global database
             self.db.loc[session_name]['Tracking'] = session['Tracking']
             # save the data

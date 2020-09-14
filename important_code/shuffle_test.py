@@ -12,6 +12,55 @@ def flatten(iterable):
             yield e
 
 
+
+def permutation_test(group_A, group_B, iterations = 1000, two_tailed = True):
+    '''    POOL -> SHUFFLE MOUSE IDENTITY    '''
+    # pool trials for the test statistic
+    group_A_pooled = np.array(list(flatten(group_A)))
+    group_B_pooled = np.array(list(flatten(group_B)))
+    # create identity array
+    group_A_mouse_ID = np.zeros(len(group_A))
+    group_B_mouse_ID = np.ones(len(group_B))
+    # create 2-D data / ID array
+    data = np.array(group_A + group_B)
+    # create a copy to be shuffled
+    shuffled_labels = np.concatenate((group_A_mouse_ID, group_B_mouse_ID))
+    # initialize test statistic
+    null_distribution = np.ones(iterations) * np.nan
+    # iterate over shuffles
+    for i in range(iterations):
+        # shuffle the labels
+        random.shuffle(shuffled_labels)
+        # get back the data
+        group_A_mean = np.mean(list(flatten(data[shuffled_labels == 0])))
+        group_B_mean = np.mean(list(flatten(data[shuffled_labels == 1])))
+        # get the test statistic for the null distribution
+        if two_tailed:
+            null_distribution[i] = abs(group_A_mean - group_B_mean)
+        else:
+            null_distribution[i] = group_B_mean - group_A_mean
+    # get the test statistic from the actual data
+    if two_tailed:
+        test_statistic = abs(np.mean(group_A_pooled) - np.mean(group_B_pooled))
+    else:
+        test_statistic = np.mean(group_B_pooled) - np.mean(group_A_pooled)
+    # get the p value
+    p = 1 - percentileofscore(null_distribution, test_statistic, kind='mean') / 100
+    if p > 0.0001: p = np.round(p, 4)
+
+    print('\nPooled stats, shuffled by mouse: p = ' + str(p))
+    if p < 0.05:
+        print('SIGNIFICANT.')
+    else:
+        print('not significant')
+#
+# group_A = [[28,25,19,1,4,24], [27,22,14], [4,21,5,0,19,17,1], [10,2,5,27,31,2,5,0,77,30,4,9,0], [1,4,0,3,0,3,97,3,5,0,10,0], [0,22,23,0,28,12,0,36,19,5]]
+# group_B = [[27,46,26,9,2,28,24,51,23,175,28,11,39,12],[70, 49, 0,11,12,9,0,2,29,9,1,64,9,66],[4,22,121,8,88,106,158,152,7,6,],[14,0,7,112,3,9,1,43,31,175,34,25,18],[21,9,0,6],\
+#            [82,0,154,7,115,88,99,82,82,20,23,169],[32,9,23,4,42,25],[32,8,7,23,4,29,15],[60,27,88,33,10,35,13,49,18,14,28,18,37,],[24,0,26,2,14,0,128,169,6,19,18],[4]]
+#
+# permutation_test(group_A, group_B, iterations = 10000, two_tailed = True)
+
+
 def permutation_correlation(data_x, data_y, iterations = 1000, two_tailed = False, pool_all = True):
     # get number of mice
     num_mice = len(data_x)
@@ -66,11 +115,19 @@ def permutation_correlation(data_x, data_y, iterations = 1000, two_tailed = Fals
 
 
 
-def permutation_test(group_A, group_B, iterations = 1000, two_tailed = True):
+# group_A = [[],[28,25,19,1,4,24], [],[],[27,22,14], [],[],[4,21,5,0,19,17,1], [10,2,5,27,31,2,5,0,77,30,4,9,0], [1,4,0,3,0,3,97,3,5,0,10,0], [0,22,23,0,28,12,0,36,19,5]]
+# group_B = [[27,46,26,9,2,28,24,51,23,175,28,11,39,12],[70, 49, 0,11,12,9,0,2,29,9,1,64,9,66],[4,22,121,8,88,106,158,152,7,6,],[14,0,7,112,3,9,1,43,31,175,34,25,18],[21,9,0,6],\
+#            [82,0,154,7,115,88,99,82,82,20,23,169],[32,9,23,4,42,25],[32,8,7,23,4,29,15],[60,27,88,33,10,35,13,49,18,14,28,18,37,],[24,0,26,2,14,0,128,169,6,19,18],[4]]
+#
+# group_A = [[28,25,19,1,4,24], [27,22,14], [4,21,5,0,19,17,1], [10,2,5,27,31,2,5,0,77,30,4,9,0], [1,4,0,3,0,3,97,3,5,0,10,0], [0,22,23,0,28,12,0,36,19,5]]
+# group_B = [[70, 49, 0,11,12,9,0,2,29,9,1,64,9,66],[21,9,0,6],[32,8,7,23,4,29,15],[60,27,88,33,10,35,13,49,18,14,28,18,37,],[24,0,26,2,14,0,128,169,6,19,18],[4]]
+# permutation_test_paired(group_A, group_B, iterations = 10000, two_tailed = True)
+
+def permutation_test_paired(group_A, group_B, iterations = 1000, two_tailed = True):
     '''    POOL -> SHUFFLE MOUSE IDENTITY    '''
     # pool trials
-    group_A_pooled = np.array(list(flatten(group_A)))
-    group_B_pooled = np.array(list(flatten(group_B)))
+    group_A_means = [np.mean(session) for session in group_A]
+    group_B_means = [np.mean(session) for session in group_B]
     # create identity array
     group_A_mouse_ID = np.zeros(len(group_A))
     group_B_mouse_ID = np.ones(len(group_B))
@@ -83,27 +140,70 @@ def permutation_test(group_A, group_B, iterations = 1000, two_tailed = True):
     # iterate over shuffles
     for i in range(iterations):
         # shuffle the labels
-        random.shuffle(shuffle_data)
-        # get back the data
-        group_A_mean = np.mean(list(flatten(data[shuffle_data == 0])))
-        group_B_mean = np.mean(list(flatten(data[shuffle_data == 1])))
+        idx_0 = (np.random.random(len(group_A_means)) > .5).astype(int)
+        idx_1 = 1 - idx_0
+        # create new groups
+        group_A_mean = group_A_means * idx_0 + group_B_means * idx_1
+        group_B_mean = group_B_means * idx_0 + group_A_means * idx_1
         # get the test statistic for the null distribution
         if two_tailed:
-            null_distribution[i] = abs(group_A_mean - group_B_mean)
+            null_distribution[i] = abs(np.mean([a - b for a, b in zip(group_A_mean, group_B_mean)] )) #abs(group_A_mean - group_B_mean)
         else:
-            null_distribution[i] = group_B_mean - group_A_mean
+            null_distribution[i] = np.mean([a - b for a, b in zip(group_A_mean, group_B_mean)])
     # get the test statistic from the actual data
     if two_tailed:
-        test_statistic = abs(np.mean(group_A_pooled) - np.mean(group_B_pooled))
+        test_statistic = abs(np.mean([a - b for a, b in zip(group_A_means, group_B_means)] ))
     else:
-        test_statistic = np.mean(group_B_pooled) - np.mean(group_A_pooled)
+        test_statistic = np.mean([a - b for a, b in zip(group_A_means, group_B_means)])
     # get the p value
-    p = np.round(1 - percentileofscore(null_distribution, test_statistic) / 100, 4)
+    p = np.round(1 - percentileofscore(null_distribution, test_statistic, kind='mean') / 100, 4)
     print('\nPooled stats, shuffled by mouse: p = ' + str(p))
     if p < 0.05:
         print('SIGNIFICANT.')
     else:
         print('not significant')
+
+
+
+
+# def permutation_test_paired(group_A, group_B, iterations = 1000, two_tailed = True):
+#     '''    POOL -> SHUFFLE MOUSE IDENTITY    '''
+#     # pool trials
+#     group_A_means = [np.mean(session) for session in group_A]
+#     group_B_means = [np.mean(session) for session in group_B]
+#     # create identity array
+#     group_A_mouse_ID = np.zeros(len(group_A))
+#     group_B_mouse_ID = np.ones(len(group_B))
+#     # create 2-D data / ID array
+#     data = np.array(group_A + group_B)
+#     # create a copy to be shuffled
+#     shuffle_data = np.concatenate((group_A_mouse_ID, group_B_mouse_ID))
+#     # initialize test statistic
+#     null_distribution = np.ones(iterations) * np.nan
+#     # iterate over shuffles
+#     for i in range(iterations):
+#         # shuffle the labels
+#         random.shuffle(shuffle_data)
+#         # get back the data
+#         group_A_mean = np.mean(list(flatten(data[shuffle_data == 0])))
+#         group_B_mean = np.mean(list(flatten(data[shuffle_data == 1])))
+#         # get the test statistic for the null distribution
+#         if two_tailed:
+#             null_distribution[i] = abs(np.mean([a - b for a, b in zip(group_A_mean, group_B_mean)] )) #abs(group_A_mean - group_B_mean)
+#         else:
+#             null_distribution[i] = group_B_mean - group_A_mean
+#     # get the test statistic from the actual data
+#     if two_tailed:
+#         test_statistic = abs(np.mean([a - b for a, b in zip(group_A_means, group_B_means)] ))
+#     else:
+#         test_statistic = np.mean([a - b for a, b in zip(group_A_means, group_B_means)])
+#     # get the p value
+#     p = np.round(1 - percentileofscore(null_distribution, test_statistic, kind='mean') / 100, 4)
+#     print('\nPooled stats, shuffled by mouse: p = ' + str(p))
+#     if p < 0.05:
+#         print('SIGNIFICANT.')
+#     else:
+#         print('not significant')
 
 #
 #
